@@ -96,7 +96,7 @@ export function ChatInput({ onSend, isLoading, disabled }: ChatInputProps) {
   ];
 
   return (
-    <div className="w-full bg-neutral-900/90 backdrop-blur-md border-t border-neutral-800 p-2 sm:p-3 safe-area-bottom">
+    <div className="w-full bg-neutral-900/95 backdrop-blur-md border-t border-neutral-800 px-3 pt-2.5 pb-6 sm:pb-3 shadow-2xl">
       {/* Quick Prompts */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none text-[11px]">
         {quickPrompts.map((prompt, idx) => (

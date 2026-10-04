@@ -1,6 +1,6 @@
 {
-  "name": "Antigravity Mobile",
-  "short_name": "Antigravity",
+  "name": "Giantigravity",
+  "short_name": "Giantigravity",
   "description": "IDE di sviluppo agentico mobile basato su Google Gemini e GitHub",
   "start_url": "/",
   "display": "standalone",

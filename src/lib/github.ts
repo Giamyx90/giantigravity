@@ -142,7 +142,7 @@ export async function saveFileContent(
     owner,
     repo,
     path: filePath,
-    message: commitMessage || `Update ${filePath} via Antigravity Mobile`,
+    message: commitMessage || `Update ${filePath} via Giantigravity`,
     content: encodedContent,
     branch,
     sha: existingSha,

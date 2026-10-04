@@ -143,7 +143,7 @@ export async function runAgent({
 }: AgentRunParams): Promise<{ reply: string; steps: AgentStep[] }> {
   const ai = new GoogleGenAI({ apiKey });
 
-  const systemInstruction = `Sei Antigravity Mobile, un assistente di programmazione agentico avanzato alimentato da Google Gemini.
+  const systemInstruction = `Sei Giantigravity, un assistente di programmazione agentico avanzato alimentato da Google Gemini.
 Lavori direttamente sul repository GitHub: "${repoContext.owner}/${repoContext.repo}" (branch attivo: "${repoContext.branch}").
 
 Linee guida operative:

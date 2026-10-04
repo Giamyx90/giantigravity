@@ -132,10 +132,7 @@ export function Header({
           </div>
           <div>
             <h1 className="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
-              <span>Antigravity</span>
-              <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                Mobile
-              </span>
+              <span>Giantigravity</span>
             </h1>
           </div>
         </div>

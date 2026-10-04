@@ -33,7 +33,9 @@ export default function Home() {
   // Load saved settings & repo from localStorage
   useEffect(() => {
     try {
-      const savedSettings = localStorage.getItem('antigravity_settings');
+      const savedSettings =
+        localStorage.getItem('giantigravity_settings') ||
+        localStorage.getItem('antigravity_settings');
       if (savedSettings) {
         const parsed = JSON.parse(savedSettings);
         setSettings(parsed);
@@ -44,7 +46,9 @@ export default function Home() {
         // Nuova sessione/utente: apri subito le impostazioni per configurare le proprie chiavi
         setIsSettingsOpen(true);
       }
-      const savedRepo = localStorage.getItem('antigravity_repo');
+      const savedRepo =
+        localStorage.getItem('giantigravity_repo') ||
+        localStorage.getItem('antigravity_repo');
       if (savedRepo) {
         setRepoContext(JSON.parse(savedRepo));
       }
@@ -56,7 +60,7 @@ export default function Home() {
 
   const handleSaveSettings = (newSettings: UserSettings) => {
     setSettings(newSettings);
-    localStorage.setItem('antigravity_settings', JSON.stringify(newSettings));
+    localStorage.setItem('giantigravity_settings', JSON.stringify(newSettings));
     // Se ha inserito le credenziali e non ha ancora scelto un repo, apri subito la selezione del repo!
     if (newSettings.githubToken && newSettings.geminiApiKey && !repoContext.owner) {
       setTimeout(() => {
@@ -73,6 +77,8 @@ export default function Home() {
     };
     setSettings(emptySettings);
     setRepoContext({ owner: '', repo: '', branch: 'main' });
+    localStorage.removeItem('giantigravity_settings');
+    localStorage.removeItem('giantigravity_repo');
     localStorage.removeItem('antigravity_settings');
     localStorage.removeItem('antigravity_repo');
   };
@@ -242,7 +248,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-full bg-neutral-950 text-neutral-100 font-sans overflow-hidden">
+    <div className="flex flex-col h-[100dvh] max-h-[100dvh] w-full bg-neutral-950 text-neutral-100 font-sans overflow-hidden">
       {/* Top Header */}
       <Header
         repoContext={repoContext}
@@ -256,7 +262,7 @@ export default function Home() {
       />
 
       {/* Main Chat Messages View */}
-      <main className="flex-1 overflow-y-auto px-2 sm:px-6 py-4 flex flex-col justify-start">
+      <main className="flex-1 min-h-0 overflow-y-auto px-2 sm:px-6 py-4 flex flex-col justify-start">
         {messages.length === 0 ? (
           <div className="my-auto max-w-lg mx-auto text-center px-4 py-8 space-y-6">
             <div className="w-16 h-16 mx-auto rounded-3xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-xl shadow-cyan-500/10">
@@ -264,7 +270,7 @@ export default function Home() {
             </div>
 
             <div>
-              <h2 className="text-xl font-bold text-white tracking-tight">Antigravity Mobile</h2>
+              <h2 className="text-xl font-bold text-white tracking-tight">Giantigravity</h2>
               <p className="text-xs text-neutral-400 mt-1">
                 L&apos;IDE agentico per sviluppare sul tuo repo GitHub dallo smartphone con Google Gemini
               </p>
