@@ -44,6 +44,7 @@ export function Header({
   const [branches, setBranches] = useState<string[]>([]);
   const [loadingRepos, setLoadingRepos] = useState(false);
   const [loadingBranches, setLoadingBranches] = useState(false);
+  const [repoSearch, setRepoSearch] = useState('');
 
   // Manual inputs fallback
   const [customOwner, setCustomOwner] = useState(repoContext.owner);
@@ -245,30 +246,63 @@ export function Header({
                   {loadingRepos ? (
                     <div className="flex items-center justify-center p-4 text-neutral-500 gap-2">
                       <Loader2 size={16} className="animate-spin text-cyan-400" />
-                      <span>Caricamento repository...</span>
+                      <span>Caricamento repository in corso...</span>
                     </div>
                   ) : repos.length > 0 ? (
-                    <div className="max-h-40 overflow-y-auto space-y-1 pr-1 border border-neutral-800 rounded-xl p-1 bg-neutral-950">
-                      {repos.map((r) => (
-                        <div
-                          key={r.id}
-                          onClick={() => handleSelectRepo(r.full_name, r.default_branch)}
-                          className={`p-2 rounded-lg cursor-pointer flex items-center justify-between transition-colors ${
-                            customOwner === r.full_name.split('/')[0] && customRepo === r.name
-                              ? 'bg-cyan-950/60 border border-cyan-800 text-cyan-200'
-                              : 'hover:bg-neutral-900 text-neutral-300'
-                          }`}
-                        >
-                          <span className="font-mono truncate">{r.full_name}</span>
-                          <span className="text-[10px] text-neutral-500 font-mono">{r.default_branch}</span>
-                        </div>
-                      ))}
+                    <div className="space-y-1.5">
+                      {repos.length > 4 && (
+                        <input
+                          type="text"
+                          value={repoSearch}
+                          onChange={(e) => setRepoSearch(e.target.value)}
+                          placeholder="Filtra per nome..."
+                          className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-2.5 py-1 text-xs text-neutral-200 placeholder-neutral-600 focus:outline-none focus:border-cyan-500"
+                        />
+                      )}
+                      <div className="max-h-48 overflow-y-auto space-y-1 pr-1 border border-neutral-800 rounded-xl p-1 bg-neutral-950">
+                        {repos
+                          .filter(
+                            (r) =>
+                              r.full_name.toLowerCase().includes(repoSearch.toLowerCase()) ||
+                              r.name.toLowerCase().includes(repoSearch.toLowerCase())
+                          )
+                          .map((r) => (
+                            <div
+                              key={r.id}
+                              onClick={() => handleSelectRepo(r.full_name, r.default_branch)}
+                              className={`p-2 rounded-lg cursor-pointer flex items-center justify-between transition-colors ${
+                                customOwner === r.full_name.split('/')[0] && customRepo === r.name
+                                  ? 'bg-cyan-950/60 border border-cyan-800 text-cyan-200'
+                                  : 'hover:bg-neutral-900 text-neutral-300'
+                              }`}
+                            >
+                              <div className="flex items-center gap-1.5 min-w-0 pr-2">
+                                <span className="font-mono truncate">{r.full_name}</span>
+                                {r.private ? (
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-950/60 text-amber-400 border border-amber-800/60 shrink-0 font-medium">
+                                    Privato
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400 border border-neutral-700 shrink-0">
+                                    Pubblico
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[10px] text-neutral-500 font-mono shrink-0">{r.default_branch}</span>
+                            </div>
+                          ))}
+                      </div>
                     </div>
                   ) : (
-                    <p className="text-[11px] text-neutral-500 italic">
-                      Nessun repository trovato o token con permessi ristretti. Puoi inserirlo manualmente qui sotto.
-                    </p>
+                    <div className="p-3 bg-neutral-950 border border-neutral-800 rounded-xl text-neutral-400 text-center">
+                      Nessun repository restituito dall&apos;API GitHub.
+                    </div>
                   )}
+
+                  {/* Private Repo Helper Tip */}
+                  <div className="p-2.5 bg-neutral-950/80 border border-neutral-800/70 rounded-xl text-[10px] text-neutral-400 leading-tight">
+                    💡 <span className="text-neutral-300 font-medium">Non vedi un repository privato?</span> Assicurati che il tuo token GitHub abbia il permesso <code className="text-cyan-400">repo</code> (o includi tutti i repo se hai creato un token fine-grained). In alternativa, puoi sempre inserirlo manualmente qui sotto!
+                  </div>
                 </div>
               )}
 

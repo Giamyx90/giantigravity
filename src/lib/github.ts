@@ -7,8 +7,10 @@ export function getOctokit(token: string): Octokit {
 export async function listUserRepos(token: string) {
   const octokit = getOctokit(token);
   const { data } = await octokit.repos.listForAuthenticatedUser({
+    visibility: 'all',
+    affiliation: 'owner,collaborator,organization_member',
     sort: 'updated',
-    per_page: 50,
+    per_page: 100,
   });
   return data.map((r) => ({
     id: r.id,
