@@ -6,6 +6,7 @@ import { Header } from '@/components/Header';
 import { MessageBubble } from '@/components/MessageBubble';
 import { ChatInput } from '@/components/ChatInput';
 import { SettingsModal } from '@/components/SettingsModal';
+import { ModelSelectorModal } from '@/components/ModelSelectorModal';
 import { Sparkles, GitBranch, Code2, Cpu, Smartphone, Lock, CheckCircle2 } from 'lucide-react';
 import { GithubIcon } from '@/components/GithubIcon';
 
@@ -14,6 +15,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isRepoModalOpen, setIsRepoModalOpen] = useState(false);
+  const [isModelModalOpen, setIsModelModalOpen] = useState(false);
 
   // Settings & Context stored in localStorage for persistence on phone
   const [settings, setSettings] = useState<UserSettings>({
@@ -85,7 +87,13 @@ export default function Home() {
 
   const handleRepoChange = (newContext: RepoContext) => {
     setRepoContext(newContext);
-    localStorage.setItem('antigravity_repo', JSON.stringify(newContext));
+    localStorage.setItem('giantigravity_repo', JSON.stringify(newContext));
+  };
+
+  const handleSelectModel = (modelId: string) => {
+    const updated = { ...settings, selectedModel: modelId };
+    setSettings(updated);
+    localStorage.setItem('giantigravity_settings', JSON.stringify(updated));
   };
 
   const handleNewChat = () => {
@@ -259,6 +267,8 @@ export default function Home() {
         githubToken={settings.githubToken}
         isRepoModalOpen={isRepoModalOpen}
         setIsRepoModalOpen={setIsRepoModalOpen}
+        selectedModel={settings.selectedModel}
+        onOpenModelSelector={() => setIsModelModalOpen(true)}
       />
 
       {/* Main Chat Messages View */}
@@ -368,6 +378,8 @@ export default function Home() {
           onSend={handleSendMessage}
           isLoading={isLoading}
           disabled={!hasConfig || !repoContext.owner || !repoContext.repo}
+          currentModel={settings.selectedModel}
+          onOpenModelSelector={() => setIsModelModalOpen(true)}
         />
       </div>
 
@@ -378,6 +390,14 @@ export default function Home() {
         settings={settings}
         onSave={handleSaveSettings}
         onClear={handleClearSettings}
+      />
+
+      {/* Model Selector Modal */}
+      <ModelSelectorModal
+        isOpen={isModelModalOpen}
+        onClose={() => setIsModelModalOpen(false)}
+        selectedModel={settings.selectedModel}
+        onSelectModel={handleSelectModel}
       />
     </div>
   );

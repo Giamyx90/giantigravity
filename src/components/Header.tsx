@@ -11,6 +11,7 @@ import {
   Loader2,
   RefreshCw,
   Lock,
+  Zap,
 } from 'lucide-react';
 import { GithubIcon } from '@/components/GithubIcon';
 
@@ -23,6 +24,8 @@ interface HeaderProps {
   githubToken: string;
   isRepoModalOpen: boolean;
   setIsRepoModalOpen: (open: boolean) => void;
+  selectedModel?: string;
+  onOpenModelSelector?: () => void;
 }
 
 export function Header({
@@ -34,6 +37,8 @@ export function Header({
   githubToken,
   isRepoModalOpen,
   setIsRepoModalOpen,
+  selectedModel = 'gemini-2.5-flash',
+  onOpenModelSelector,
 }: HeaderProps) {
   const [repos, setRepos] = useState<GitHubRepoItem[]>([]);
   const [branches, setBranches] = useState<string[]>([]);
@@ -169,8 +174,20 @@ export function Header({
           )}
         </button>
 
-        {/* Actions: New Chat & Settings */}
+        {/* Actions: Model Switcher, New Chat & Settings */}
         <div className="flex items-center gap-1">
+          {onOpenModelSelector && (
+            <button
+              onClick={onOpenModelSelector}
+              className="p-1.5 px-2 rounded-xl bg-neutral-800/80 hover:bg-neutral-800 text-cyan-300 border border-neutral-700/60 text-[11px] font-mono flex items-center gap-1 transition-colors"
+              title="Cambia modello Google Gemini"
+            >
+              <Zap size={12} className="text-amber-400" />
+              <span className="hidden sm:inline">{selectedModel.replace('gemini-', '')}</span>
+              <ChevronDown size={11} className="text-neutral-400" />
+            </button>
+          )}
+
           <button
             onClick={onNewChat}
             className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"

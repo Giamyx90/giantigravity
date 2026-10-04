@@ -1,15 +1,23 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Mic, MicOff, Sparkles, Loader2 } from 'lucide-react';
+import { Send, Mic, MicOff, Sparkles, Loader2, Zap, Brain, ChevronDown } from 'lucide-react';
 
 interface ChatInputProps {
   onSend: (text: string) => void;
   isLoading: boolean;
   disabled?: boolean;
+  currentModel?: string;
+  onOpenModelSelector?: () => void;
 }
 
-export function ChatInput({ onSend, isLoading, disabled }: ChatInputProps) {
+export function ChatInput({
+  onSend,
+  isLoading,
+  disabled,
+  currentModel = 'gemini-2.5-flash',
+  onOpenModelSelector,
+}: ChatInputProps) {
   const [text, setText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -95,10 +103,36 @@ export function ChatInput({ onSend, isLoading, disabled }: ChatInputProps) {
     '💡 Suggerisci ottimizzazioni',
   ];
 
+  const getModelLabel = (id: string) => {
+    if (id === 'gemini-2.5-flash') return '2.5 Flash';
+    if (id === 'gemini-2.5-pro') return '2.5 Pro';
+    if (id === 'gemini-2.0-flash') return '2.0 Flash';
+    if (id === 'gemini-1.5-pro') return '1.5 Pro';
+    if (id === 'gemini-1.5-flash') return '1.5 Flash';
+    return id.replace('gemini-', '');
+  };
+
   return (
     <div className="w-full bg-neutral-900/95 backdrop-blur-md border-t border-neutral-800 px-3 pt-2.5 pb-6 sm:pb-3 shadow-2xl">
-      {/* Quick Prompts */}
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none text-[11px]">
+      {/* Quick Actions & Model Switcher */}
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none text-[11px] items-center">
+        {onOpenModelSelector && (
+          <button
+            type="button"
+            onClick={onOpenModelSelector}
+            className="shrink-0 px-2.5 py-1 rounded-full bg-cyan-950/70 hover:bg-cyan-900/80 text-cyan-200 border border-cyan-800/80 transition-colors select-none flex items-center gap-1.5 font-medium shadow-sm"
+            title="Cambia modello Google Gemini"
+          >
+            {currentModel.includes('pro') ? (
+              <Brain size={12} className="text-purple-400" />
+            ) : (
+              <Zap size={12} className="text-amber-400" />
+            )}
+            <span>{getModelLabel(currentModel)}</span>
+            <ChevronDown size={11} className="text-cyan-400" />
+          </button>
+        )}
+
         {quickPrompts.map((prompt, idx) => (
           <button
             key={idx}
