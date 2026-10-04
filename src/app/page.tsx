@@ -6,13 +6,14 @@ import { Header } from '@/components/Header';
 import { MessageBubble } from '@/components/MessageBubble';
 import { ChatInput } from '@/components/ChatInput';
 import { SettingsModal } from '@/components/SettingsModal';
-import { Sparkles, GitBranch, Code2, Cpu, Smartphone } from 'lucide-react';
+import { Sparkles, GitBranch, Code2, Cpu, Smartphone, Lock, CheckCircle2 } from 'lucide-react';
 import { GithubIcon } from '@/components/GithubIcon';
 
 export default function Home() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isRepoModalOpen, setIsRepoModalOpen] = useState(false);
 
   // Settings & Context stored in localStorage for persistence on phone
   const [settings, setSettings] = useState<UserSettings>({
@@ -56,6 +57,12 @@ export default function Home() {
   const handleSaveSettings = (newSettings: UserSettings) => {
     setSettings(newSettings);
     localStorage.setItem('antigravity_settings', JSON.stringify(newSettings));
+    // Se ha inserito le credenziali e non ha ancora scelto un repo, apri subito la selezione del repo!
+    if (newSettings.githubToken && newSettings.geminiApiKey && !repoContext.owner) {
+      setTimeout(() => {
+        setIsRepoModalOpen(true);
+      }, 500);
+    }
   };
 
   const handleClearSettings = () => {
@@ -65,7 +72,9 @@ export default function Home() {
       selectedModel: 'gemini-2.5-flash',
     };
     setSettings(emptySettings);
+    setRepoContext({ owner: '', repo: '', branch: 'main' });
     localStorage.removeItem('antigravity_settings');
+    localStorage.removeItem('antigravity_repo');
   };
 
   const handleRepoChange = (newContext: RepoContext) => {
@@ -86,16 +95,18 @@ export default function Home() {
     scrollToBottom();
   }, [messages, isLoading]);
 
+  const hasConfig = Boolean(settings.githubToken && settings.geminiApiKey);
+
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
 
-    if (!settings.geminiApiKey || !settings.githubToken) {
+    if (!hasConfig) {
       setIsSettingsOpen(true);
       return;
     }
 
     if (!repoContext.owner || !repoContext.repo) {
-      alert('Tocca l\'intestazione in alto per selezionare il tuo repository GitHub.');
+      setIsRepoModalOpen(true);
       return;
     }
 
@@ -230,8 +241,6 @@ export default function Home() {
     }
   };
 
-  const hasConfig = Boolean(settings.githubToken && settings.geminiApiKey);
-
   return (
     <div className="flex flex-col h-screen w-full bg-neutral-950 text-neutral-100 font-sans overflow-hidden">
       {/* Top Header */}
@@ -242,6 +251,8 @@ export default function Home() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         hasKeys={hasConfig}
         githubToken={settings.githubToken}
+        isRepoModalOpen={isRepoModalOpen}
+        setIsRepoModalOpen={setIsRepoModalOpen}
       />
 
       {/* Main Chat Messages View */}
@@ -259,21 +270,60 @@ export default function Home() {
               </p>
             </div>
 
-            {/* Status Card */}
-            {(!repoContext.owner || !settings.githubToken) && (
+            {/* Step-by-Step Onboarding Cards */}
+            {!hasConfig ? (
               <div
                 onClick={() => setIsSettingsOpen(true)}
-                className="cursor-pointer p-3.5 bg-neutral-900 border border-neutral-800 rounded-2xl text-left hover:border-cyan-500/50 transition-colors shadow-sm"
+                className="cursor-pointer p-4 bg-amber-950/20 border border-amber-800/50 rounded-2xl text-left hover:border-amber-500 transition-all shadow-md group"
               >
-                <div className="flex items-center gap-2 text-cyan-400 font-semibold text-xs mb-1">
-                  <GithubIcon size={15} />
-                  <span>Configurazione iniziale</span>
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2 text-amber-400 font-semibold text-xs">
+                    <Lock size={15} />
+                    <span>Passaggio 1: Configura le tue credenziali</span>
+                  </div>
+                  <span className="text-[10px] text-amber-400 font-semibold px-2 py-0.5 rounded-full bg-amber-950 border border-amber-800">
+                    Richiesto
+                  </span>
                 </div>
-                <p className="text-[11px] text-neutral-400">
-                  {!settings.githubToken
-                    ? 'Tocca qui per inserire il tuo GitHub Token e la chiave Gemini API.'
-                    : 'Tocca l\'intestazione in alto per selezionare il repository da modificare.'}
+                <p className="text-[11px] text-neutral-300">
+                  Tocca qui per inserire la tua chiave Google Gemini e il tuo Personal Access Token di GitHub. I dati rimangono solo sul tuo dispositivo.
                 </p>
+              </div>
+            ) : !repoContext.owner ? (
+              <div
+                onClick={() => setIsRepoModalOpen(true)}
+                className="cursor-pointer p-4 bg-cyan-950/30 border border-cyan-800/60 rounded-2xl text-left hover:border-cyan-500 transition-all shadow-md animate-pulse"
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2 text-cyan-400 font-semibold text-xs">
+                    <GithubIcon size={15} />
+                    <span>Passaggio 2: Seleziona il Repository</span>
+                  </div>
+                  <span className="text-[10px] text-cyan-400 font-semibold px-2 py-0.5 rounded-full bg-cyan-950 border border-cyan-800">
+                    Sbloccato
+                  </span>
+                </div>
+                <p className="text-[11px] text-neutral-200">
+                  Credenziali configurate con successo! Tocca qui per scegliere il repository e il branch su cui vuoi iniziare a programmare.
+                </p>
+              </div>
+            ) : (
+              <div className="p-3 bg-neutral-900 border border-neutral-800 rounded-2xl text-left flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2 text-neutral-200 truncate pr-2">
+                  <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                  <span className="font-mono font-medium truncate">
+                    {repoContext.owner}/{repoContext.repo}
+                  </span>
+                  <span className="text-cyan-400 font-mono text-[10px] shrink-0">
+                    ({repoContext.branch})
+                  </span>
+                </div>
+                <button
+                  onClick={() => setIsRepoModalOpen(true)}
+                  className="text-cyan-400 hover:underline text-[11px] shrink-0"
+                >
+                  Cambia
+                </button>
               </div>
             )}
 
@@ -311,7 +361,7 @@ export default function Home() {
         <ChatInput
           onSend={handleSendMessage}
           isLoading={isLoading}
-          disabled={!repoContext.owner || !repoContext.repo}
+          disabled={!hasConfig || !repoContext.owner || !repoContext.repo}
         />
       </div>
 

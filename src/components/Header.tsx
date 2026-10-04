@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RepoContext, GitHubRepoItem } from '@/types';
 import {
   Sparkles,
@@ -10,6 +10,7 @@ import {
   ChevronDown,
   Loader2,
   RefreshCw,
+  Lock,
 } from 'lucide-react';
 import { GithubIcon } from '@/components/GithubIcon';
 
@@ -20,6 +21,8 @@ interface HeaderProps {
   onOpenSettings: () => void;
   hasKeys: boolean;
   githubToken: string;
+  isRepoModalOpen: boolean;
+  setIsRepoModalOpen: (open: boolean) => void;
 }
 
 export function Header({
@@ -29,8 +32,9 @@ export function Header({
   onOpenSettings,
   hasKeys,
   githubToken,
+  isRepoModalOpen,
+  setIsRepoModalOpen,
 }: HeaderProps) {
-  const [isRepoModalOpen, setIsRepoModalOpen] = useState(false);
   const [repos, setRepos] = useState<GitHubRepoItem[]>([]);
   const [branches, setBranches] = useState<string[]>([]);
   const [loadingRepos, setLoadingRepos] = useState(false);
@@ -40,6 +44,19 @@ export function Header({
   const [customOwner, setCustomOwner] = useState(repoContext.owner);
   const [customRepo, setCustomRepo] = useState(repoContext.repo);
   const [customBranch, setCustomBranch] = useState(repoContext.branch);
+
+  useEffect(() => {
+    setCustomOwner(repoContext.owner);
+    setCustomRepo(repoContext.repo);
+    setCustomBranch(repoContext.branch);
+  }, [repoContext]);
+
+  // When modal opens and token is available, automatically load repos
+  useEffect(() => {
+    if (isRepoModalOpen && githubToken && repos.length === 0) {
+      fetchRepos();
+    }
+  }, [isRepoModalOpen, githubToken]);
 
   const fetchRepos = async () => {
     if (!githubToken) return;
@@ -78,10 +95,12 @@ export function Header({
   };
 
   const openRepoSelector = () => {
-    setIsRepoModalOpen(true);
-    if (githubToken && repos.length === 0) {
-      fetchRepos();
+    // Selection is only possible after entering configurations!
+    if (!hasKeys || !githubToken) {
+      onOpenSettings();
+      return;
     }
+    setIsRepoModalOpen(true);
   };
 
   const handleSelectRepo = (fullName: string, defaultBranch: string) => {
@@ -121,19 +140,36 @@ export function Header({
           </div>
         </div>
 
-        {/* Center: Active Repo & Branch Chip */}
+        {/* Center: Active Repo & Branch Chip (Locked if no keys) */}
         <button
           onClick={openRepoSelector}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-neutral-800/90 hover:bg-neutral-800 border border-neutral-700/60 text-xs text-neutral-200 transition-colors max-w-[170px] sm:max-w-xs truncate"
-          title="Cambia repository o branch"
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs transition-all max-w-[180px] sm:max-w-xs truncate ${
+            hasKeys
+              ? 'bg-neutral-800/90 hover:bg-neutral-800 border-neutral-700/60 text-neutral-200 cursor-pointer shadow-sm'
+              : 'bg-neutral-900 border-neutral-800 text-neutral-500 hover:border-amber-500/50 hover:text-amber-400 cursor-pointer'
+          }`}
+          title={
+            hasKeys
+              ? 'Cambia repository o branch'
+              : 'Configura prima le tue credenziali nelle impostazioni per sbloccare i repository'
+          }
         >
-          <GithubIcon size={13} className="text-neutral-400 shrink-0" />
-          <span className="truncate font-mono font-medium text-[11px]">
-            {repoContext.owner ? `${repoContext.owner}/${repoContext.repo}` : 'Seleziona Repo'}
-          </span>
-          <span className="text-neutral-600">/</span>
-          <span className="text-cyan-400 font-mono text-[10px] truncate">{repoContext.branch}</span>
-          <ChevronDown size={12} className="text-neutral-500 shrink-0" />
+          {hasKeys ? (
+            <>
+              <GithubIcon size={13} className="text-neutral-400 shrink-0" />
+              <span className="truncate font-mono font-medium text-[11px]">
+                {repoContext.owner ? `${repoContext.owner}/${repoContext.repo}` : 'Seleziona Repo'}
+              </span>
+              <span className="text-neutral-600">/</span>
+              <span className="text-cyan-400 font-mono text-[10px] truncate">{repoContext.branch}</span>
+              <ChevronDown size={12} className="text-neutral-500 shrink-0" />
+            </>
+          ) : (
+            <>
+              <Lock size={12} className="text-amber-400 shrink-0 animate-pulse" />
+              <span className="text-[11px] text-neutral-400 truncate">Configura prima le chiavi</span>
+            </>
+          )}
         </button>
 
         {/* Actions: New Chat & Settings */}
@@ -153,15 +189,15 @@ export function Header({
           >
             <Settings size={17} />
             {!hasKeys && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-400 animate-ping" />
             )}
           </button>
         </div>
       </header>
 
-      {/* Repo Selection Modal */}
+      {/* Repo Selection Modal (Only accessible after configurations) */}
       {isRepoModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
           <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
             <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-800">
               <div className="flex items-center gap-2">
@@ -170,7 +206,7 @@ export function Header({
               </div>
               <button
                 onClick={() => setIsRepoModalOpen(false)}
-                className="text-neutral-400 hover:text-white"
+                className="text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-neutral-800"
               >
                 ✕
               </button>
@@ -216,7 +252,7 @@ export function Header({
                     </div>
                   ) : (
                     <p className="text-[11px] text-neutral-500 italic">
-                      Nessun repository caricato. Puoi inserirne uno manualmente qui sotto.
+                      Nessun repository trovato o token con permessi ristretti. Puoi inserirlo manualmente qui sotto.
                     </p>
                   )}
                 </div>
@@ -228,12 +264,12 @@ export function Header({
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[10px] text-neutral-500 block mb-1">Owner / Utente</label>
+                    <label className="text-[10px] text-neutral-500 block mb-1">Owner / Utente GitHub</label>
                     <input
                       type="text"
                       value={customOwner}
                       onChange={(e) => setCustomOwner(e.target.value)}
-                      placeholder="es. giam_"
+                      placeholder="es. Giamyx90"
                       className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-2.5 py-1.5 text-neutral-200 focus:outline-none focus:border-cyan-500 font-mono"
                     />
                   </div>
@@ -243,7 +279,7 @@ export function Header({
                       type="text"
                       value={customRepo}
                       onChange={(e) => setCustomRepo(e.target.value)}
-                      placeholder="es. my-app"
+                      placeholder="es. giantigravity"
                       className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-2.5 py-1.5 text-neutral-200 focus:outline-none focus:border-cyan-500 font-mono"
                     />
                   </div>
@@ -289,7 +325,7 @@ export function Header({
                 type="button"
                 onClick={handleConfirmRepo}
                 disabled={!customOwner || !customRepo}
-                className="px-4 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-neutral-950 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-neutral-950 font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
               >
                 Conferma Repository
               </button>
