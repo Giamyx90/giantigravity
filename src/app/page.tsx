@@ -34,7 +34,14 @@ export default function Home() {
     try {
       const savedSettings = localStorage.getItem('antigravity_settings');
       if (savedSettings) {
-        setSettings(JSON.parse(savedSettings));
+        const parsed = JSON.parse(savedSettings);
+        setSettings(parsed);
+        if (!parsed.githubToken || !parsed.geminiApiKey) {
+          setIsSettingsOpen(true);
+        }
+      } else {
+        // Nuova sessione/utente: apri subito le impostazioni per configurare le proprie chiavi
+        setIsSettingsOpen(true);
       }
       const savedRepo = localStorage.getItem('antigravity_repo');
       if (savedRepo) {
@@ -42,12 +49,23 @@ export default function Home() {
       }
     } catch (e) {
       console.error(e);
+      setIsSettingsOpen(true);
     }
   }, []);
 
   const handleSaveSettings = (newSettings: UserSettings) => {
     setSettings(newSettings);
     localStorage.setItem('antigravity_settings', JSON.stringify(newSettings));
+  };
+
+  const handleClearSettings = () => {
+    const emptySettings: UserSettings = {
+      githubToken: '',
+      geminiApiKey: '',
+      selectedModel: 'gemini-2.5-flash',
+    };
+    setSettings(emptySettings);
+    localStorage.removeItem('antigravity_settings');
   };
 
   const handleRepoChange = (newContext: RepoContext) => {
@@ -71,8 +89,13 @@ export default function Home() {
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
 
-    if (!repoContext.owner || !repoContext.repo) {
+    if (!settings.geminiApiKey || !settings.githubToken) {
       setIsSettingsOpen(true);
+      return;
+    }
+
+    if (!repoContext.owner || !repoContext.repo) {
+      alert('Tocca l\'intestazione in alto per selezionare il tuo repository GitHub.');
       return;
     }
 
@@ -207,10 +230,7 @@ export default function Home() {
     }
   };
 
-  const hasConfig = Boolean(
-    (settings.githubToken || process.env.NEXT_PUBLIC_HAS_GH_TOKEN) &&
-      (settings.geminiApiKey || process.env.NEXT_PUBLIC_HAS_GEMINI_KEY)
-  );
+  const hasConfig = Boolean(settings.githubToken && settings.geminiApiKey);
 
   return (
     <div className="flex flex-col h-screen w-full bg-neutral-950 text-neutral-100 font-sans overflow-hidden">
@@ -301,6 +321,7 @@ export default function Home() {
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
         onSave={handleSaveSettings}
+        onClear={handleClearSettings}
       />
     </div>
   );

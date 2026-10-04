@@ -30,14 +30,14 @@ export async function POST(req: NextRequest) {
 
     if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: 'Chiave API Gemini mancante. Inseriscila nelle impostazioni o nelle variabili d\'ambiente (GEMINI_API_KEY).' }),
+        JSON.stringify({ error: 'Chiave API Gemini mancante. Tocca l\'icona delle impostazioni in alto per configurare la tua chiave personale.' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     if (!githubToken) {
       return new Response(
-        JSON.stringify({ error: 'GitHub Token mancante. Inseriscilo nelle impostazioni o nelle variabili d\'ambiente (GITHUB_TOKEN).' }),
+        JSON.stringify({ error: 'GitHub Token mancante. Tocca l\'icona delle impostazioni per configurare il tuo token personale.' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
