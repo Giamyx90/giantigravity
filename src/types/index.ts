@@ -50,43 +50,55 @@ export interface GitHubRepoItem {
 export interface AIModelOption {
   id: string;
   name: string;
-  badge: string;
-  description: string;
-  isNew?: boolean;
+  tier?: 'High' | 'Medium' | 'Low';
+  tag?: string; // 'New' | 'Notice'
+  description?: string;
 }
 
 export const AVAILABLE_MODELS: AIModelOption[] = [
   {
-    id: 'gemini-2.5-flash',
-    name: 'Gemini 2.5 Flash',
-    badge: 'Consigliato',
-    description: 'Velocissimo e multimodale, ideale per task rapidi e smartphone',
-    isNew: true,
+    id: 'gemini-3.8-flash',
+    name: 'Gemini 3.8 Flash',
+    tier: 'High',
+    description: 'Modello predefinito ad altissime prestazioni per coding agentico',
   },
   {
-    id: 'gemini-2.5-pro',
-    name: 'Gemini 2.5 Pro',
-    badge: 'Coding Avanzato',
-    description: 'Capacità di ragionamento profonde per architetture e refactor complessi',
-    isNew: true,
+    id: 'gemini-3.7-flash',
+    name: 'Gemini 3.7 Flash',
+    tier: 'Medium',
+    description: 'Bilanciato per task frequenti e modifica codice',
   },
   {
-    id: 'gemini-2.0-flash',
-    name: 'Gemini 2.0 Flash',
-    badge: 'Next Gen',
-    description: 'Modello di nuova generazione con bassissima latenza',
-    isNew: true,
+    id: 'gemini-3.6-flash',
+    name: 'Gemini 3.6 Flash',
+    tier: 'Medium',
+    description: 'Modello Flash 3.6 per risposte veloci',
   },
   {
-    id: 'gemini-1.5-pro',
-    name: 'Gemini 1.5 Pro',
-    badge: '2M Context',
-    description: 'Finestra di contesto enorme per analizzare interi repository',
+    id: 'gemini-3.1-pro',
+    name: 'Gemini 3.1 Pro',
+    tier: 'Low',
+    description: 'Modello di ragionamento profondo per architetture complesse',
   },
   {
-    id: 'gemini-1.5-flash',
-    name: 'Gemini 1.5 Flash',
-    badge: 'Leggero',
-    description: 'Modello economico e veloce per compiti ordinari',
+    id: 'claude-opus-5-5',
+    name: 'Claude Opus 5.5',
+    tier: 'Medium',
+    tag: 'New',
+    description: 'Modello Claude Opus 5.5',
+  },
+  {
+    id: 'claude-sonnet-5-5',
+    name: 'Claude Sonnet 5.5',
+    tier: 'Medium',
+    tag: 'New',
+    description: 'Modello Claude Sonnet 5.5',
+  },
+  {
+    id: 'gpt-oss-120b',
+    name: 'GPT-OSS 120B (Medium)',
+    tier: 'Medium',
+    tag: 'Notice',
+    description: 'Modello Open Source ad alta capacità',
   },
 ];

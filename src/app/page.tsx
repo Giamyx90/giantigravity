@@ -21,7 +21,7 @@ export default function Home() {
   const [settings, setSettings] = useState<UserSettings>({
     githubToken: '',
     geminiApiKey: '',
-    selectedModel: 'gemini-2.5-flash',
+    selectedModel: 'gemini-3.8-flash',
   });
 
   const [repoContext, setRepoContext] = useState<RepoContext>({

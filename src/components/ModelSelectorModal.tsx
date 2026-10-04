@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { AVAILABLE_MODELS } from '@/types';
-import { Sparkles, Check, X, Zap, Brain, Cpu, ChevronRight } from 'lucide-react';
+import { Check, ChevronRight, Info, Sparkles, X, Plus } from 'lucide-react';
 
 interface ModelSelectorModalProps {
   isOpen: boolean;
@@ -35,112 +35,110 @@ export function ModelSelectorModal({
     }
   };
 
-  const getModelIcon = (id: string) => {
-    if (id.includes('pro')) {
-      return <Brain size={18} className="text-purple-400 shrink-0" />;
-    }
-    if (id.includes('flash')) {
-      return <Zap size={18} className="text-amber-400 shrink-0" />;
-    }
-    return <Cpu size={18} className="text-cyan-400 shrink-0" />;
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-800">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800/80">
           <div className="flex items-center gap-2">
-            <Sparkles size={18} className="text-cyan-400" />
-            <h3 className="text-sm font-semibold text-neutral-100">Seleziona Modello Google AI</h3>
+            <Sparkles size={16} className="text-cyan-400" />
+            <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Model</h3>
           </div>
           <button
             onClick={onClose}
             className="p-1 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
 
-        {/* List of Models */}
-        <div className="p-4 space-y-2 overflow-y-auto flex-1">
+        {/* Model Menu List (Styled exactly as in Antigravity Desktop) */}
+        <div className="p-2 space-y-1 overflow-y-auto flex-1 text-xs">
           {AVAILABLE_MODELS.map((model) => {
             const isSelected = selectedModel === model.id;
+
             return (
               <div
                 key={model.id}
                 onClick={() => handleSelect(model.id)}
-                className={`p-3.5 rounded-xl cursor-pointer border transition-all flex items-start justify-between gap-3 select-none ${
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all select-none ${
                   isSelected
-                    ? 'bg-cyan-950/40 border-cyan-500/80 shadow-md shadow-cyan-500/10'
-                    : 'bg-neutral-950/70 border-neutral-800 hover:bg-neutral-800/60 hover:border-neutral-700'
+                    ? 'bg-neutral-800 text-white font-medium shadow-sm'
+                    : 'text-neutral-300 hover:bg-neutral-800/60 hover:text-white'
                 }`}
               >
-                <div className="flex items-start gap-3 min-w-0">
-                  <div className="mt-0.5">{getModelIcon(model.id)}</div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-xs text-neutral-100">{model.name}</span>
-                      <span
-                        className={`text-[9px] font-semibold px-2 py-0.5 rounded-full ${
-                          model.badge === 'Consigliato'
-                            ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
-                            : model.badge === 'Coding Avanzato'
-                            ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                            : 'bg-neutral-800 text-neutral-400 border border-neutral-700'
-                        }`}
-                      >
-                        {model.badge}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-neutral-400 mt-1 leading-tight">{model.description}</p>
-                    <span className="text-[10px] text-neutral-600 font-mono block mt-1">{model.id}</span>
-                  </div>
+                {/* Left: Model Name & Tier */}
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="truncate">{model.name}</span>
+                  {model.tier && (
+                    <span className="text-[11px] text-neutral-500 font-normal shrink-0">
+                      {model.tier}
+                    </span>
+                  )}
+                  {model.tag && (
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-medium shrink-0 ${
+                        model.tag === 'New'
+                          ? 'bg-neutral-800 text-neutral-400 border border-neutral-700'
+                          : 'bg-neutral-800 text-neutral-400'
+                      }`}
+                    >
+                      {model.tag}
+                      {model.tag === 'Notice' && <Info size={10} className="inline ml-1 text-neutral-500" />}
+                    </span>
+                  )}
                 </div>
 
-                <div className="shrink-0 mt-1">
+                {/* Right: Checkmark if selected or Chevron */}
+                <div className="shrink-0 ml-2">
                   {isSelected ? (
-                    <div className="w-5 h-5 rounded-full bg-cyan-500 text-neutral-950 flex items-center justify-center">
-                      <Check size={13} strokeWidth={3} />
-                    </div>
+                    <Check size={16} className="text-cyan-400" strokeWidth={2.5} />
                   ) : (
-                    <div className="w-5 h-5 rounded-full border border-neutral-700" />
+                    <ChevronRight size={14} className="text-neutral-600" />
                   )}
                 </div>
               </div>
             );
           })}
 
-          {/* Custom Model Toggle */}
-          <div className="pt-2 border-t border-neutral-800/60">
+          {/* Custom Model Option */}
+          <div className="pt-2 border-t border-neutral-800/80 mt-1">
             {!showCustomInput ? (
               <button
                 type="button"
                 onClick={() => setShowCustomInput(true)}
-                className="w-full py-2.5 px-3 rounded-xl border border-dashed border-neutral-800 hover:border-cyan-500/50 text-neutral-400 hover:text-cyan-400 text-xs flex items-center justify-between transition-colors"
+                className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800/50 transition-colors text-[11px]"
               >
-                <span>Usa un altro modello personalizzato (es. preview / thinking)...</span>
-                <ChevronRight size={14} />
+                <span className="flex items-center gap-1.5">
+                  <Plus size={13} className="text-cyan-400" />
+                  Altro modello Google AI personalizzato...
+                </span>
+                <ChevronRight size={12} className="text-neutral-600" />
               </button>
             ) : (
-              <form onSubmit={handleCustomSubmit} className="space-y-2 pt-1">
-                <label className="text-[11px] text-neutral-400 font-medium block">
-                  Nome modello personalizzato (Google AI Studio ID):
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={customModel}
-                    onChange={(e) => setCustomModel(e.target.value)}
-                    placeholder="es. gemini-2.0-flash-thinking-exp-1219"
-                    className="flex-1 bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-neutral-200 text-xs focus:outline-none focus:border-cyan-500 font-mono"
-                  />
+              <form onSubmit={handleCustomSubmit} className="p-1 space-y-2">
+                <input
+                  type="text"
+                  value={customModel}
+                  onChange={(e) => setCustomModel(e.target.value)}
+                  placeholder="es. gemini-3.8-flash"
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-neutral-200 text-xs focus:outline-none focus:border-cyan-500 font-mono"
+                  autoFocus
+                />
+                <div className="flex justify-end gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomInput(false)}
+                    className="px-2.5 py-1 text-[11px] text-neutral-400 hover:text-white"
+                  >
+                    Annulla
+                  </button>
                   <button
                     type="submit"
                     disabled={!customModel.trim()}
-                    className="px-3 py-2 bg-cyan-500 hover:bg-cyan-400 text-neutral-950 font-semibold rounded-xl text-xs disabled:opacity-50"
+                    className="px-3 py-1 bg-cyan-500 hover:bg-cyan-400 text-neutral-950 font-semibold rounded-lg text-[11px] disabled:opacity-50"
                   >
-                    Usa
+                    Usa Modello
                   </button>
                 </div>
               </form>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { UserSettings } from '@/types';
+import { UserSettings, AVAILABLE_MODELS } from '@/types';
 import { X, Key, Sparkles, Check, ExternalLink, ShieldCheck, Trash2 } from 'lucide-react';
 import { GithubIcon } from '@/components/GithubIcon';
 
@@ -145,10 +145,13 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
             <select
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
-              className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-neutral-200 focus:outline-none focus:border-cyan-500"
+              className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-neutral-200 focus:outline-none focus:border-cyan-500 font-mono text-xs"
             >
-              <option value="gemini-2.5-flash">Gemini 2.5 Flash (Veloce, consigliato per smartphone)</option>
-              <option value="gemini-2.5-pro">Gemini 2.5 Pro (Massimo ragionamento su codebase complesse)</option>
+              {AVAILABLE_MODELS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name} {m.tier ? `(${m.tier})` : ''}
+                </option>
+              ))}
             </select>
           </div>
 

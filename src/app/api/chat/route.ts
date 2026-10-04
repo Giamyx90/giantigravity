@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
     const apiKey = settings.geminiApiKey || process.env.GEMINI_API_KEY;
     const githubToken = settings.githubToken || process.env.GITHUB_TOKEN;
-    const modelName = settings.selectedModel || process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const modelName = settings.selectedModel || process.env.GEMINI_MODEL || 'gemini-3.8-flash';
 
     if (!apiKey) {
       return new Response(

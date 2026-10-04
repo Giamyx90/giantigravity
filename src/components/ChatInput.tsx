@@ -104,11 +104,13 @@ export function ChatInput({
   ];
 
   const getModelLabel = (id: string) => {
-    if (id === 'gemini-2.5-flash') return '2.5 Flash';
-    if (id === 'gemini-2.5-pro') return '2.5 Pro';
-    if (id === 'gemini-2.0-flash') return '2.0 Flash';
-    if (id === 'gemini-1.5-pro') return '1.5 Pro';
-    if (id === 'gemini-1.5-flash') return '1.5 Flash';
+    if (id === 'gemini-3.8-flash') return 'Gemini 3.8 Flash';
+    if (id === 'gemini-3.7-flash') return 'Gemini 3.7 Flash';
+    if (id === 'gemini-3.6-flash') return 'Gemini 3.6 Flash';
+    if (id === 'gemini-3.1-pro') return 'Gemini 3.1 Pro';
+    if (id === 'claude-opus-5-5') return 'Claude Opus 5.5';
+    if (id === 'claude-sonnet-5-5') return 'Claude Sonnet 5.5';
+    if (id === 'gpt-oss-120b') return 'GPT-OSS 120B';
     return id.replace('gemini-', '');
   };
 
