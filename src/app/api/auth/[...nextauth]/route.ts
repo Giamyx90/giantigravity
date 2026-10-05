@@ -56,8 +56,8 @@ function createAuthOptions(clientId: string, clientSecret: string): AuthOptions 
         clientSecret: clientSecret || process.env.GOOGLE_CLIENT_SECRET || 'dummy-client-secret',
         authorization: {
           params: {
-            // Ambito ufficiale Google Cloud Platform che autorizza Gemini e tutti i servizi cloud associati
-            scope: 'openid email profile https://www.googleapis.com/auth/cloud-platform',
+            // Ambiti ufficiali Google Cloud Platform e Generative Language API per autorizzare Gemini
+            scope: 'openid email profile https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/generative-language.retriever',
             prompt: 'consent',
             access_type: 'offline',
             response_type: 'code',

@@ -117,7 +117,7 @@ export function GoogleOAuthGuideModal({ isOpen, onClose, onOpenSettings }: Googl
                 </div>
               </li>
               <li>
-                Nella <strong>Schermata consenso OAuth</strong>, aggiungi la tua email a <strong>Utenti di test</strong> e aggiungi l&apos;ambito <code>https://www.googleapis.com/auth/cloud-platform</code>.
+                Nella <strong>Schermata consenso OAuth</strong>, aggiungi la tua email a <strong>Utenti di test</strong> e negli <strong>Ambiti</strong> aggiungi <code>https://www.googleapis.com/auth/generative-language.retriever</code> e <code>https://www.googleapis.com/auth/cloud-platform</code>.
               </li>
               <li>
                 Incolla il <strong>Client ID</strong> e il <strong>Client Secret</strong> nelle impostazioni dell&apos;applicazione.

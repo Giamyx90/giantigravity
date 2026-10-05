@@ -192,8 +192,11 @@ export async function POST(req: NextRequest) {
               if (infoRes.ok) {
                 const infoData = await infoRes.json();
                 rawError += `\n\n🔍 [Diagnostica Ambiti Token]\nAmbiti presenti nel tuo token attuale: "${infoData.scope || 'nessuno'}"`;
+                if (!infoData.scope?.includes('generative-language.retriever')) {
+                  rawError += `\n⚠️ Nota: nel token manca l'ambito specifico richiesto da Gemini: "https://www.googleapis.com/auth/generative-language.retriever".`;
+                }
                 if (!infoData.scope?.includes('cloud-platform')) {
-                  rawError += `\n⚠️ Come vedi, l'ambito "https://www.googleapis.com/auth/cloud-platform" NON è stato incluso da Google nel token.`;
+                  rawError += `\n⚠️ Nota: nel token manca anche l'ambito generale "https://www.googleapis.com/auth/cloud-platform".`;
                 }
               }
             } catch (e) {
