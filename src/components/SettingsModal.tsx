@@ -27,7 +27,6 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
   const [antigravityStatus, setAntigravityStatus] = useState<{ available: boolean; path?: string } | null>(null);
   const [copiedUri, setCopiedUri] = useState(false);
   const [callbackUrl, setCallbackUrl] = useState('');
-  const [includeGeminiScope, setIncludeGeminiScope] = useState(false);
 
   // Token & API Key verification states
   const [isVerifyingToken, setIsVerifyingToken] = useState(false);
@@ -111,10 +110,8 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setCallbackUrl(`${window.location.origin}/api/auth/callback/google`);
-      const match = document.cookie.match(/(?:^|;\s*)google_gemini_scope=([^;]*)/);
-      if (match && match[1] === 'true') {
-        setIncludeGeminiScope(true);
-      }
+      // Rimuoviamo eventuali vecchi cookie di scope restrittivi
+      document.cookie = 'google_gemini_scope=; path=/; max-age=0; SameSite=Lax';
     }
   }, [isOpen]);
 
@@ -147,7 +144,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
       } else {
         document.cookie = 'google_client_secret=; path=/; max-age=0; SameSite=Lax';
       }
-      document.cookie = `google_gemini_scope=${includeGeminiScope}; path=/; max-age=31536000; SameSite=Lax${secureFlag}`;
+      document.cookie = 'google_gemini_scope=; path=/; max-age=0; SameSite=Lax';
     }
 
     onSave({
@@ -173,7 +170,6 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
       setGoogleClientId('');
       setGoogleClientSecret('');
       setGoogleAccessToken('');
-      setIncludeGeminiScope(false);
       setProvider('antigravity');
       if (typeof document !== 'undefined') {
         document.cookie = 'google_client_id=; path=/; max-age=0; SameSite=Lax';
@@ -297,26 +293,15 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
                   />
                 </div>
 
-                {/* Opzione Scope Gemini Avanzato */}
-                <div className="p-2.5 rounded-lg bg-neutral-950 border border-neutral-800 space-y-1.5">
-                  <label className="flex items-start gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={includeGeminiScope}
-                      onChange={(e) => setIncludeGeminiScope(e.target.checked)}
-                      className="rounded border-neutral-700 bg-neutral-900 text-cyan-500 focus:ring-cyan-500 w-3.5 h-3.5 mt-0.5"
-                    />
-                    <div className="text-[11px] leading-tight">
-                      <span className="text-neutral-200 font-medium block">
-                        Richiedi permesso Gemini via OAuth (scope: generative-language)
-                      </span>
-                      <span className="text-[10px] text-neutral-400 block mt-0.5">
-                        {includeGeminiScope
-                          ? '⚠️ Attivo: se Google mostra "Some requested scopes cannot be shown", disattiva questa opzione per accedere subito con Google senza errori!'
-                          : '✅ Disattivato (Consigliato): consente il login immediato con Google senza errori di autorizzazione.'}
-                      </span>
-                    </div>
-                  </label>
+                {/* Configurazione Ambiti Google Standard */}
+                <div className="p-2.5 rounded-lg bg-neutral-950 border border-neutral-800 text-[11px] space-y-1">
+                  <div className="text-emerald-400 font-medium flex items-center gap-1.5">
+                    <CheckCircle2 size={12} />
+                    <span>Ambiti di accesso standard verificati (openid, email, profile)</span>
+                  </div>
+                  <p className="text-[10px] text-neutral-400 leading-tight">
+                    Accesso rapido al 100% senza blocchi di autorizzazione di Google Cloud.
+                  </p>
                 </div>
 
                 <div className="text-[10px] text-cyan-400/90 leading-tight">

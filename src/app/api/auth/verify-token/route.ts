@@ -38,14 +38,18 @@ export async function POST(req: NextRequest) {
       if (!geminiTestRes.ok) {
         const geminiErr = await geminiTestRes.json().catch(() => ({}));
         let userFriendlyError = geminiErr.error?.message;
-        if (userFriendlyError?.includes('invalid authentication credentials')) {
-          userFriendlyError = `Il token è valido per l'account (${tokenInfo.email || 'Google'}), ma NON ha i permessi per Gemini. Scope del tuo token: "${tokenInfo.scope || 'nessuno'}". Per funzionare deve includere: https://www.googleapis.com/auth/generative-language`;
+        if (
+          userFriendlyError?.includes('invalid authentication credentials') ||
+          userFriendlyError?.includes('insufficient authentication scopes') ||
+          userFriendlyError?.includes('ACCESS_TOKEN_SCOPE_INSUFFICIENT')
+        ) {
+          userFriendlyError = `Il token è valido per l'account (${tokenInfo.email || 'Google'}), ma NON ha i permessi per Gemini. Scope del tuo token: "${tokenInfo.scope || 'nessuno'}". Per accedere a Gemini senza blocchi di Google Cloud, usa direttamente una API Key di Google AI Studio.`;
         }
         return NextResponse.json({
           valid: false,
           error:
             userFriendlyError ||
-            'Il token è valido ma non ha lo scope per Gemini (https://www.googleapis.com/auth/generative-language).',
+            'Il token è valido ma non ha lo scope per Gemini. Si consiglia una API Key di Google AI Studio.',
           tokenInfo,
         });
       }
