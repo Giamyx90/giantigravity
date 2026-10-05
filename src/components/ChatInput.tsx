@@ -15,7 +15,7 @@ export function ChatInput({
   onSend,
   isLoading,
   disabled,
-  currentModel = 'gemini-2.5-flash',
+  currentModel = 'gemini-3.8-flash',
   onOpenModelSelector,
 }: ChatInputProps) {
   const [text, setText] = useState('');

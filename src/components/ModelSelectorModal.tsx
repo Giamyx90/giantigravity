@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { AVAILABLE_MODELS } from '@/types';
-import { Check, ChevronRight, Info, Sparkles, X, Plus } from 'lucide-react';
+import { Check, ChevronRight, Info, Sparkles, X } from 'lucide-react';
 
 interface ModelSelectorModalProps {
   isOpen: boolean;
@@ -17,22 +17,11 @@ export function ModelSelectorModal({
   selectedModel,
   onSelectModel,
 }: ModelSelectorModalProps) {
-  const [customModel, setCustomModel] = useState('');
-  const [showCustomInput, setShowCustomInput] = useState(false);
-
   if (!isOpen) return null;
 
   const handleSelect = (modelId: string) => {
     onSelectModel(modelId);
     onClose();
-  };
-
-  const handleCustomSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (customModel.trim()) {
-      onSelectModel(customModel.trim());
-      onClose();
-    }
   };
 
   return (
@@ -100,50 +89,6 @@ export function ModelSelectorModal({
               </div>
             );
           })}
-
-          {/* Custom Model Option */}
-          <div className="pt-2 border-t border-neutral-800/80 mt-1">
-            {!showCustomInput ? (
-              <button
-                type="button"
-                onClick={() => setShowCustomInput(true)}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800/50 transition-colors text-[11px]"
-              >
-                <span className="flex items-center gap-1.5">
-                  <Plus size={13} className="text-cyan-400" />
-                  Altro modello Google AI personalizzato...
-                </span>
-                <ChevronRight size={12} className="text-neutral-600" />
-              </button>
-            ) : (
-              <form onSubmit={handleCustomSubmit} className="p-1 space-y-2">
-                <input
-                  type="text"
-                  value={customModel}
-                  onChange={(e) => setCustomModel(e.target.value)}
-                  placeholder="es. gemini-3.8-flash"
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-neutral-200 text-xs focus:outline-none focus:border-cyan-500 font-mono"
-                  autoFocus
-                />
-                <div className="flex justify-end gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setShowCustomInput(false)}
-                    className="px-2.5 py-1 text-[11px] text-neutral-400 hover:text-white"
-                  >
-                    Annulla
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={!customModel.trim()}
-                    className="px-3 py-1 bg-cyan-500 hover:bg-cyan-400 text-neutral-950 font-semibold rounded-lg text-[11px] disabled:opacity-50"
-                  >
-                    Usa Modello
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
         </div>
       </div>
     </div>

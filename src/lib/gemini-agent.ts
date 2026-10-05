@@ -138,7 +138,7 @@ export async function runAgent({
   googleAccessToken,
   googleProject,
   githubToken,
-  modelName = 'gemini-2.5-flash',
+  modelName = 'gemini-3.8-flash',
   repoContext,
   prompt,
   history = [],
@@ -237,11 +237,11 @@ Rispondi in lingua italiana.`;
 
           await new Promise((r) => setTimeout(r, waitMs));
 
-          // Se dopo 2 tentativi il modello è ancora congestionato, effettua fallback su modello alternativo
+          // Se dopo 2 tentativi il modello è ancora congestionato, effettua fallback su un modello alternativo (3.8 -> 3.7 -> 3.6)
           if (attempts >= 2) {
             const fallback = activeModel.includes('3.8')
-              ? 'gemini-2.5-flash'
-              : (activeModel.includes('2.5') ? 'gemini-2.0-flash' : 'gemini-2.5-flash');
+              ? 'gemini-3.7-flash'
+              : (activeModel.includes('3.7') ? 'gemini-3.6-flash' : 'gemini-3.7-flash');
             console.warn(`[Gemini Agent] Switch fallback temporaneo da ${activeModel} a ${fallback}...`);
             activeModel = fallback;
           }
