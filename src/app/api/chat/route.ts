@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 import { runAgent } from '@/lib/gemini-agent';
 import { runAgyAgent, isAgyInstalled } from '@/lib/agy-agent';
 import { AgentStep, RepoContext, UserSettings } from '@/types';
@@ -25,9 +26,20 @@ export async function POST(req: NextRequest) {
       settings?: Partial<UserSettings>;
     } = body;
 
+    // Recupera il token di sessione NextAuth direttamente dai cookie HTTP del server
+    const secret = process.env.NEXTAUTH_SECRET || 'giantigravity-app-dynamic-secret-key-2026';
+    let token = await getToken({ req: req as any, secret });
+    if (!token) {
+      token = await getToken({ req: req as any, secret, secureCookie: true });
+    }
+    if (!token) {
+      token = await getToken({ req: req as any, secret, secureCookie: false });
+    }
+
+    const serverAccessToken = (token?.accessToken as string) || undefined;
     const apiKey = settings.geminiApiKey || process.env.GEMINI_API_KEY;
     const githubToken = settings.githubToken || process.env.GITHUB_TOKEN || '';
-    const activeGoogleAccessToken = googleAccessToken || settings.googleAccessToken;
+    const activeGoogleAccessToken = googleAccessToken || serverAccessToken || settings.googleAccessToken;
     const modelName = settings.selectedModel || process.env.GEMINI_MODEL || 'gemini-3.8-flash';
     const provider = settings.provider || (isAgyInstalled() ? 'antigravity' : (activeGoogleAccessToken ? 'google_oauth' : 'gemini_api'));
 
@@ -91,40 +103,31 @@ export async function POST(req: NextRequest) {
 
     // 2. Google OAuth Mode (Cloud / Vercel / Smartphone)
     if (!activeGoogleAccessToken && !apiKey) {
+      if (token) {
+        return new Response(
+          JSON.stringify({
+            error:
+              'Sessione Google non sincronizzata (access_token assente nel cookie di sessione). Tocca "Esci" in alto a destra e poi di nuovo "Accedi con Google" per rinnovare la sessione con i permessi aggiornati.',
+          }),
+          { status: 401, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
       return new Response(
         JSON.stringify({
           error:
             'Autenticazione mancante. Tocca "Accedi con Google" per autenticare la tua sessione ed iniziare a programmare.',
         }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    // Verifica se il token OAuth della sessione NextAuth attuale possiede l'ambito cloud-platform
-    if (activeGoogleAccessToken && !apiKey) {
-      try {
-        const tokenRes = await fetch(
-          `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(activeGoogleAccessToken)}`
-        );
-        if (tokenRes.ok) {
-          const tokenData = await tokenRes.json();
-          if (tokenData.scope && !tokenData.scope.includes('cloud-platform')) {
-            return new Response(
-              JSON.stringify({
-                error:
-                  'La tua sessione di accesso attuale risale a prima dell\'aggiornamento dei permessi. Tocca il pulsante "Esci" in alto a destra e poi di nuovo "Accedi con Google" per rinnovare la sessione con i nuovi permessi!',
-              }),
-              { status: 403, headers: { 'Content-Type': 'application/json' } }
-            );
-          }
-        }
-      } catch (e) {
-        console.warn('Verifica token scope non completata:', e);
-      }
-    }
-
     // Estrai il Google Cloud Project Number/ID dal Client ID per l'attribuzione della quota
-    const rawClientId = settings.googleClientId || req.cookies.get('google_client_id')?.value || process.env.GOOGLE_CLIENT_ID || '';
+    const rawClientId =
+      settings.googleClientId ||
+      (token?.clientId as string) ||
+      req.cookies.get('google_client_id')?.value ||
+      process.env.GOOGLE_CLIENT_ID ||
+      '';
     const googleProject = rawClientId.match(/^([0-9]+)-/)?.[1] || process.env.GOOGLE_CLOUD_PROJECT || undefined;
 
     const activeRepo: RepoContext = repoContext || {
@@ -160,15 +163,29 @@ export async function POST(req: NextRequest) {
           sendEvent({ type: 'done', reply: result.reply, steps: result.steps });
         } catch (err: any) {
           console.error('Agent error:', err);
-          let errorMsg = err.message || 'Errore durante l\'esecuzione dell\'agente.';
-          if (errorMsg.includes('ACCESS_TOKEN_SCOPE_INSUFFICIENT') || errorMsg.includes('insufficient authentication scopes')) {
-            errorMsg = 'Il tuo token Google non possiede i permessi per accedere a Gemini. Clicca su "Esci" in alto a destra e accedi di nuovo con "Accedi con Google" per confermare l\'accesso al tuo account.';
-          } else if (errorMsg.includes('invalid authentication credentials')) {
-            errorMsg = 'Sessione Google scaduta o credenziali non valide. Tocca "Accedi con Google" per rinnovare la sessione.';
+          // Mostra sempre l'errore raw esatto ricevuto da Google/Gemini senza nasconderlo o sostituirlo
+          let rawError = '';
+          if (typeof err === 'string') {
+            rawError = err;
+          } else if (err?.message) {
+            rawError = err.message;
+            if (err.status && !rawError.includes(String(err.status))) {
+              rawError = `[Status ${err.status}] ${rawError}`;
+            }
+            if (err.errorDetails) {
+              rawError += `\n${JSON.stringify(err.errorDetails, null, 2)}`;
+            }
+          } else {
+            try {
+              rawError = JSON.stringify(err, null, 2);
+            } catch {
+              rawError = String(err);
+            }
           }
+
           sendEvent({
             type: 'error',
-            error: errorMsg,
+            error: rawError,
           });
         } finally {
           controller.close();

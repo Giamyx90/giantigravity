@@ -320,6 +320,27 @@ export default function Home() {
               onOpenSettings={() => setIsSettingsOpen(true)}
             />
 
+            {/* Avviso se loggato ma senza token aggiornato */}
+            {isGoogleLoggedIn && !(session as any)?.accessToken && (
+              <div
+                onClick={() => signIn('google')}
+                className="cursor-pointer p-4 bg-gradient-to-r from-amber-950/40 to-yellow-950/30 border border-amber-600/70 rounded-2xl text-left hover:border-amber-400 transition-all shadow-lg group"
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2 text-amber-300 font-semibold text-xs">
+                    <Sparkles size={15} className="text-amber-400" />
+                    <span>Sessione Google da Sincronizzare</span>
+                  </div>
+                  <span className="text-[10px] text-amber-300 font-bold px-2.5 py-0.5 rounded-full bg-amber-950 border border-amber-700 animate-pulse">
+                    Riautentica ➔
+                  </span>
+                </div>
+                <p className="text-[11px] text-neutral-200 leading-relaxed">
+                  Il tuo account Google è collegato, ma il token di sessione risale a prima dell&apos;ultimo aggiornamento dei permessi. Tocca qui o fai Esci e Accedi per rinnovare la sessione.
+                </p>
+              </div>
+            )}
+
             {/* Step-by-Step Onboarding Cards */}
             {!isGoogleLoggedIn ? (
               <div

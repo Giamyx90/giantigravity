@@ -137,7 +137,13 @@ export function GoogleSignInButton({ variant = 'full', className = '', onOpenSet
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 font-medium text-neutral-100 truncate">
               <span className="truncate">{session.user.name}</span>
-              <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />
+              {Boolean((session as any)?.accessToken) ? (
+                <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />
+              ) : (
+                <span className="text-[10px] text-amber-400 bg-amber-950/80 border border-amber-800/80 px-1.5 py-0.2 rounded-full font-medium shrink-0 animate-pulse">
+                  Rinnova sessione
+                </span>
+              )}
             </div>
             <div className="text-[11px] text-cyan-300/80 truncate font-mono">
               {session.user.email}
