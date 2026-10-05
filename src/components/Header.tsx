@@ -23,12 +23,12 @@ interface HeaderProps {
   onRepoChange: (newContext: RepoContext) => void;
   onNewChat: () => void;
   onOpenSettings: () => void;
-  hasKeys: boolean;
-  githubToken: string;
+  hasKeys?: boolean;
+  githubToken?: string;
   isRepoModalOpen: boolean;
   setIsRepoModalOpen: (open: boolean) => void;
   selectedModel?: string;
-  provider?: AIProvider;
+  provider?: any;
   onOpenModelSelector?: () => void;
 }
 
@@ -37,12 +37,10 @@ export function Header({
   onRepoChange,
   onNewChat,
   onOpenSettings,
-  hasKeys,
-  githubToken,
+  githubToken = '',
   isRepoModalOpen,
   setIsRepoModalOpen,
   selectedModel = 'gemini-3.8-flash',
-  provider = 'antigravity',
   onOpenModelSelector,
 }: HeaderProps) {
   const [repos, setRepos] = useState<GitHubRepoItem[]>([]);
@@ -146,63 +144,38 @@ export function Header({
         {/* Center: Active Repo & Branch Chip */}
         <button
           onClick={openRepoSelector}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs transition-all max-w-[180px] sm:max-w-xs truncate ${
-            hasKeys
-              ? 'bg-neutral-800/90 hover:bg-neutral-800 border-neutral-700/60 text-neutral-200 cursor-pointer shadow-sm'
-              : 'bg-neutral-900 border-neutral-800 text-neutral-500 hover:border-amber-500/50 hover:text-amber-400 cursor-pointer'
-          }`}
-          title={
-            hasKeys
-              ? 'Cambia repository o branch'
-              : 'Configura prima le tue credenziali nelle impostazioni'
-          }
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs transition-all max-w-[180px] sm:max-w-xs truncate bg-neutral-800/90 hover:bg-neutral-800 border-neutral-700/60 text-neutral-200 cursor-pointer shadow-sm"
+          title="Seleziona o cambia repository"
         >
-          {hasKeys ? (
-            repoContext.owner === 'local' ? (
-              <>
-                <FolderGit2 size={13} className="text-cyan-400 shrink-0" />
-                <span className="truncate font-mono font-medium text-[11px]">
-                  {repoContext.repo || 'workspace'} (Locale)
-                </span>
-                <ChevronDown size={12} className="text-neutral-500 shrink-0" />
-              </>
-            ) : repoContext.owner ? (
-              <>
-                <GithubIcon size={13} className="text-neutral-400 shrink-0" />
-                <span className="truncate font-mono font-medium text-[11px]">
-                  {repoContext.owner}/{repoContext.repo}
-                </span>
-                <span className="text-neutral-600">/</span>
-                <span className="text-cyan-400 font-mono text-[10px] truncate">{repoContext.branch}</span>
-                <ChevronDown size={12} className="text-neutral-500 shrink-0" />
-              </>
-            ) : (
-              <>
-                <FolderGit2 size={13} className="text-cyan-400 shrink-0" />
-                <span className="truncate font-mono font-medium text-[11px]">Workspace Locale</span>
-                <ChevronDown size={12} className="text-neutral-500 shrink-0" />
-              </>
-            )
+          {repoContext.owner === 'local' ? (
+            <>
+              <FolderGit2 size={13} className="text-cyan-400 shrink-0" />
+              <span className="truncate font-mono font-medium text-[11px]">
+                {repoContext.repo || 'workspace'} (Locale)
+              </span>
+              <ChevronDown size={12} className="text-neutral-500 shrink-0" />
+            </>
+          ) : repoContext.owner ? (
+            <>
+              <GithubIcon size={13} className="text-neutral-400 shrink-0" />
+              <span className="truncate font-mono font-medium text-[11px]">
+                {repoContext.owner}/{repoContext.repo}
+              </span>
+              <span className="text-neutral-600">/</span>
+              <span className="text-cyan-400 font-mono text-[10px] truncate">{repoContext.branch}</span>
+              <ChevronDown size={12} className="text-neutral-500 shrink-0" />
+            </>
           ) : (
             <>
-              <Lock size={12} className="text-amber-400 shrink-0 animate-pulse" />
-              <span className="text-[11px] text-neutral-400 truncate">Configura prima le chiavi</span>
+              <FolderGit2 size={13} className="text-cyan-400 shrink-0" />
+              <span className="truncate font-mono font-medium text-[11px]">Seleziona Repository</span>
+              <ChevronDown size={12} className="text-neutral-500 shrink-0" />
             </>
           )}
         </button>
 
         {/* Actions: Model Switcher, New Chat & Settings */}
         <div className="flex items-center gap-1">
-          {provider === 'antigravity' && (
-            <span
-              className="hidden md:flex items-center gap-1 px-2 py-1 rounded-xl bg-cyan-950/40 border border-cyan-800/50 text-[10px] text-cyan-300 font-mono font-medium select-none"
-              title="Motore Antigravity CLI nativo attivo (zero limiti API key)"
-            >
-              <Cpu size={11} className="text-cyan-400" />
-              <span>Antigravity</span>
-            </span>
-          )}
-
           {onOpenModelSelector && (
             <button
               onClick={onOpenModelSelector}
@@ -225,13 +198,10 @@ export function Header({
 
           <button
             onClick={onOpenSettings}
-            className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors relative"
+            className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
             title="Impostazioni"
           >
             <Settings size={17} />
-            {!hasKeys && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-            )}
           </button>
 
           <GoogleSignInButton variant="compact" />

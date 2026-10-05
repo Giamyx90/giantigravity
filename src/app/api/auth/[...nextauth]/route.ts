@@ -10,10 +10,10 @@ function createAuthOptions(clientId: string, clientSecret: string): AuthOptions 
         clientSecret: clientSecret || process.env.GOOGLE_CLIENT_SECRET || 'dummy-client-secret',
         authorization: {
           params: {
-            // Usiamo solo ambiti standard di base: non richiedono verifica Google Cloud
-            // ed eliminano al 100% l'errore "Accesso bloccato / errore di autorizzazione"
-            scope: 'openid email profile',
-            prompt: 'select_account',
+            // Richiediamo l'ambito generative-language per interagire direttamente con Gemini
+            // tramite l'account Google dell'utente, senza necessità di API Key esterne.
+            scope: 'openid email profile https://www.googleapis.com/auth/generative-language',
+            prompt: 'consent',
             access_type: 'offline',
             response_type: 'code',
           },

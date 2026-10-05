@@ -22,9 +22,8 @@ export default function Home() {
 
   // Settings & Context stored in localStorage for persistence on phone
   const [settings, setSettings] = useState<UserSettings>({
-    provider: 'antigravity',
+    provider: 'google_oauth',
     githubToken: '',
-    geminiApiKey: '',
     selectedModel: 'gemini-3.8-flash',
   });
 
@@ -45,19 +44,10 @@ export default function Home() {
         localStorage.getItem('antigravity_settings');
       if (savedSettings) {
         const parsed = JSON.parse(savedSettings);
-        if (!parsed.provider) {
-          parsed.provider = parsed.geminiApiKey ? 'gemini_api' : 'antigravity';
-        }
         setSettings(parsed);
-        if (parsed.provider === 'gemini_api' && !parsed.geminiApiKey) {
-          setIsSettingsOpen(true);
-        }
       } else {
-        // Nuova sessione: default su Antigravity CLI nativo senza configurazione obbligatoria
         setSettings({
-          provider: 'antigravity',
-          githubToken: '',
-          geminiApiKey: '',
+          provider: 'google_oauth',
           selectedModel: 'gemini-3.8-flash',
         });
       }
@@ -69,7 +59,6 @@ export default function Home() {
       }
     } catch (e) {
       console.error(e);
-      setIsSettingsOpen(true);
     }
   }, []);
 
@@ -84,8 +73,7 @@ export default function Home() {
   const handleSaveSettings = (newSettings: UserSettings) => {
     setSettings(newSettings);
     localStorage.setItem('giantigravity_settings', JSON.stringify(newSettings));
-    // Se ha inserito le credenziali e non ha ancora scelto un repo, apri la selezione
-    if (newSettings.provider === 'gemini_api' && newSettings.githubToken && newSettings.geminiApiKey && (!repoContext.owner || repoContext.owner === 'local')) {
+    if (newSettings.githubToken && (!repoContext.owner || repoContext.owner === 'local')) {
       setTimeout(() => {
         setIsRepoModalOpen(true);
       }, 500);
@@ -94,9 +82,7 @@ export default function Home() {
 
   const handleClearSettings = () => {
     const emptySettings: UserSettings = {
-      provider: 'antigravity',
-      githubToken: '',
-      geminiApiKey: '',
+      provider: 'google_oauth',
       selectedModel: 'gemini-3.8-flash',
     };
     setSettings(emptySettings);
@@ -133,10 +119,9 @@ export default function Home() {
     scrollToBottom();
   }, [messages, isLoading]);
 
-  const isAntigravity = (settings.provider || 'antigravity') === 'antigravity';
   const isGoogleLoggedIn = Boolean(session?.user);
   const hasOAuthClientKeys = Boolean(settings.googleClientId && settings.googleClientSecret);
-  const hasConfig = isAntigravity || isGoogleLoggedIn || Boolean(settings.googleAccessToken) || Boolean(settings.geminiApiKey);
+  const hasConfig = isGoogleLoggedIn;
 
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
@@ -336,40 +321,30 @@ export default function Home() {
             />
 
             {/* Step-by-Step Onboarding Cards */}
-            {hasOAuthClientKeys && !isGoogleLoggedIn ? (
+            {!isGoogleLoggedIn ? (
               <div
-                onClick={() => signIn('google')}
+                onClick={() => {
+                  if (hasOAuthClientKeys) {
+                    signIn('google');
+                  } else {
+                    setIsSettingsOpen(true);
+                  }
+                }}
                 className="cursor-pointer p-4 bg-gradient-to-r from-blue-950/40 to-cyan-950/30 border border-blue-700/60 rounded-2xl text-left hover:border-cyan-400 transition-all shadow-lg group"
               >
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-2 text-cyan-300 font-semibold text-xs">
                     <Sparkles size={15} className="text-cyan-400" />
-                    <span>Client ID Google pronto! Ultimo tocco:</span>
+                    <span>Accesso Richiesto</span>
                   </div>
                   <span className="text-[10px] text-cyan-300 font-bold px-2.5 py-0.5 rounded-full bg-cyan-950 border border-cyan-700 animate-pulse">
-                    Accedi ora ➔
+                    {hasOAuthClientKeys ? 'Accedi ora ➔' : 'Configura Client ID ➔'}
                   </span>
                 </div>
                 <p className="text-[11px] text-neutral-200 leading-relaxed">
-                  Hai inserito con successo il tuo Client ID e Secret. Tocca qui o sul pulsante <strong>&ldquo;Accedi con Google&rdquo;</strong> in alto per completare l&apos;autenticazione ed entrare nell&apos;IDE.
-                </p>
-              </div>
-            ) : !hasConfig ? (
-              <div
-                onClick={() => setIsSettingsOpen(true)}
-                className="cursor-pointer p-4 bg-amber-950/20 border border-amber-800/50 rounded-2xl text-left hover:border-amber-500 transition-all shadow-md group"
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-2 text-amber-400 font-semibold text-xs">
-                    <Lock size={15} />
-                    <span>Passaggio 1: Configura le tue credenziali</span>
-                  </div>
-                  <span className="text-[10px] text-amber-400 font-semibold px-2 py-0.5 rounded-full bg-amber-950 border border-amber-800">
-                    Richiesto
-                  </span>
-                </div>
-                <p className="text-[11px] text-neutral-300">
-                  Tocca qui per inserire la tua chiave Google Gemini e il tuo Personal Access Token di GitHub. I dati rimangono solo sul tuo dispositivo.
+                  {hasOAuthClientKeys
+                    ? "Tocca qui o su 'Accedi con Google' per entrare nell'IDE con il tuo account Google, esattamente come in Antigravity."
+                    : "Tocca qui per inserire il tuo Google Client ID nelle impostazioni ed effettuare l'accesso con Google."}
                 </p>
               </div>
             ) : !repoContext.owner ? (

@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, ExternalLink, Copy, Check, Sparkles, Key, ShieldAlert, ArrowRight, Zap } from 'lucide-react';
+import { X, ExternalLink, Copy, Check, Sparkles, ArrowRight, ShieldCheck } from 'lucide-react';
 
 interface GoogleOAuthGuideModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onOpenSettings?: (focus?: 'oauth' | 'gemini') => void;
+  onOpenSettings?: (focus?: 'oauth') => void;
 }
 
 export function GoogleOAuthGuideModal({ isOpen, onClose, onOpenSettings }: GoogleOAuthGuideModalProps) {
@@ -29,12 +29,12 @@ export function GoogleOAuthGuideModal({ isOpen, onClose, onOpenSettings }: Googl
     }
   };
 
-  const handleOpenSettingsAction = (focus: 'oauth' | 'gemini') => {
+  const handleOpenSettingsAction = () => {
     onClose();
     if (onOpenSettings) {
-      onOpenSettings(focus);
+      onOpenSettings('oauth');
     } else if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('open-settings', { detail: { focus } }));
+      window.dispatchEvent(new CustomEvent('open-settings', { detail: { focus: 'oauth' } }));
     }
   };
 
@@ -44,15 +44,15 @@ export function GoogleOAuthGuideModal({ isOpen, onClose, onOpenSettings }: Googl
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-800 bg-neutral-950/60">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
-              <ShieldAlert size={18} />
+            <div className="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+              <Sparkles size={18} />
             </div>
             <div>
               <h3 className="text-sm font-semibold text-neutral-100">
-                Configurazione Accesso con Google
+                Accesso Account Google (Stile Antigravity)
               </h3>
               <p className="text-[11px] text-neutral-400">
-                Perché hai visto l&apos;errore &ldquo;The OAuth client was not found&rdquo;
+                Come collegare il tuo account Google
               </p>
             </div>
           </div>
@@ -66,77 +66,24 @@ export function GoogleOAuthGuideModal({ isOpen, onClose, onOpenSettings }: Googl
 
         {/* Modal Body */}
         <div className="p-5 space-y-4 overflow-y-auto text-xs leading-relaxed">
-          {/* Explanation Alert */}
-          <div className="p-3.5 rounded-xl bg-amber-950/30 border border-amber-800/40 text-neutral-300 space-y-1.5">
-            <div className="font-semibold text-amber-300 text-xs flex items-center gap-1.5">
-              <span>Cosa significa l&apos;errore di Google?</span>
+          <div className="p-3.5 rounded-xl bg-cyan-950/20 border border-cyan-800/40 text-neutral-300 space-y-1.5">
+            <div className="font-semibold text-cyan-300 text-xs flex items-center gap-1.5">
+              <ShieldCheck size={14} className="text-cyan-400" />
+              <span>Autenticazione Diretta Google</span>
             </div>
             <p className="text-[11px] text-neutral-300 leading-normal">
-              Per motivi di sicurezza, Google <strong>non consente</strong> a nessun sito web di autenticare utenti senza che il proprietario abbia registrato un <strong>OAuth Client ID</strong> su Google Cloud. Senza questo ID, Google blocca l&apos;accesso segnalando che il client non esiste.
+              Giantigravity funziona direttamente con il tuo account Google, esattamente come Antigravity. Per consentire a Google di riconoscere l&apos;applicazione, inserisci il tuo Google Client ID.
             </p>
           </div>
 
-          <div className="text-neutral-400 text-[11px]">
-            Hai a disposizione due strade semplicissime per risolvere e usare l&apos;app dal tuo smartphone:
-          </div>
-
-          {/* Option A: Gemini API Key Pay-as-you-go (RECOMMENDED) */}
-          <div className="p-4 rounded-xl bg-gradient-to-br from-neutral-950 to-neutral-900 border border-cyan-800/40 hover:border-cyan-500/60 transition-all space-y-2.5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-cyan-400 font-semibold text-xs">
-                <Zap size={15} />
-                <span>Opzione 1 (Consigliata da Smartphone): API Key senza limiti</span>
-              </div>
-              <span className="text-[10px] text-cyan-300 font-bold px-2 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-800">
-                Più facile
-              </span>
-            </div>
-
-            <p className="text-[11px] text-neutral-300 leading-relaxed">
-              Il motivo per cui avevi troppe limitazioni è che il piano gratuito ha un tetto di 15 richieste al minuto.
-              Attivando il <strong>Pay-as-you-go</strong> su Google AI Studio:
-            </p>
-
-            <ul className="text-[11px] text-neutral-300 space-y-1 pl-4 list-disc marker:text-cyan-400">
-              <li>Il limite sale all&apos;istante a <strong>4.000 richieste al minuto</strong>.</li>
-              <li>I modelli Gemini Flash costano circa <strong>0,07$ per milione di parole</strong> (pochi centesimi per mesi interi di uso).</li>
-              <li>Zero configurazioni Google Cloud complesse da telefono: basta incollare la chiave.</li>
-            </ul>
-
-            <div className="flex items-center gap-2 pt-1">
-              <a
-                href="https://aistudio.google.com/app/apikey"
-                target="_blank"
-                rel="noreferrer"
-                className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-[11px] font-medium flex items-center gap-1.5 transition-colors"
-              >
-                <span>Ottieni API Key da AI Studio</span>
-                <ExternalLink size={12} />
-              </a>
-
-              <button
-                type="button"
-                onClick={() => handleOpenSettingsAction('gemini')}
-                className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-neutral-950 font-semibold text-[11px] flex items-center gap-1.5 transition-colors ml-auto"
-              >
-                <Key size={12} />
-                <span>Inserisci API Key</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Option B: Setup Google OAuth Client ID */}
-          <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-800 space-y-2.5">
+          {/* Setup Guide */}
+          <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-800 space-y-3">
             <div className="flex items-center gap-2 text-neutral-200 font-semibold text-xs">
               <Sparkles size={15} className="text-blue-400" />
-              <span>Opzione 2: Configura il tuo Google Client ID (Login Google)</span>
+              <span>Passaggi di configurazione Google Cloud</span>
             </div>
 
-            <p className="text-[11px] text-neutral-300 leading-relaxed">
-              Se vuoi abilitare il pulsante &ldquo;Accedi con Google&rdquo;, puoi creare un Client ID gratuito su Google Cloud:
-            </p>
-
-            <ol className="text-[11px] text-neutral-300 space-y-2 pl-4 list-decimal marker:text-neutral-500">
+            <ol className="text-[11px] text-neutral-300 space-y-2.5 pl-4 list-decimal marker:text-neutral-500">
               <li>
                 Apri la{' '}
                 <a
@@ -148,13 +95,10 @@ export function GoogleOAuthGuideModal({ isOpen, onClose, onOpenSettings }: Googl
                   <span>Google Cloud Console</span>
                   <ExternalLink size={10} />
                 </a>{' '}
-                e clicca <strong>Crea credenziali</strong> ➔ <strong>ID client OAuth</strong>.
+                e seleziona <strong>Crea credenziali</strong> ➔ <strong>ID client OAuth</strong> (tipo: Applicazione Web).
               </li>
               <li>
-                Scegli tipo <strong>Applicazione Web</strong>.
-              </li>
-              <li>
-                In <strong>URI di reindirizzamento autorizzati</strong>, inserisci questo URL:
+                In <strong>URI di reindirizzamento autorizzati</strong>, incolla questo URL:
                 <div className="mt-1 flex items-center gap-1.5">
                   <input
                     type="text"
@@ -173,18 +117,21 @@ export function GoogleOAuthGuideModal({ isOpen, onClose, onOpenSettings }: Googl
                 </div>
               </li>
               <li>
-                Copia il <strong>Client ID</strong> e il <strong>Client Secret</strong> e incollali nelle impostazioni della WebApp (rimarranno salvati sul tuo dispositivo).
+                Nella <strong>Schermata consenso OAuth</strong>, aggiungi la tua email a <strong>Utenti di test</strong> e aggiungi l&apos;ambito <code>https://www.googleapis.com/auth/generative-language</code>.
+              </li>
+              <li>
+                Incolla il <strong>Client ID</strong> e il <strong>Client Secret</strong> nelle impostazioni dell&apos;applicazione.
               </li>
             </ol>
 
-            <div className="pt-1 flex justify-end">
+            <div className="pt-2 flex justify-end">
               <button
                 type="button"
-                onClick={() => handleOpenSettingsAction('oauth')}
-                className="px-3 py-1.5 rounded-lg border border-neutral-700 bg-neutral-900 hover:bg-neutral-800 text-neutral-200 font-medium text-[11px] flex items-center gap-1.5 transition-colors"
+                onClick={handleOpenSettingsAction}
+                className="px-3.5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-neutral-950 font-semibold text-[11px] flex items-center gap-1.5 transition-all shadow-md"
               >
-                <span>Apri Configurazione Client ID</span>
-                <ArrowRight size={12} />
+                <span>Inserisci Client ID nelle impostazioni</span>
+                <ArrowRight size={13} />
               </button>
             </div>
           </div>
@@ -192,7 +139,7 @@ export function GoogleOAuthGuideModal({ isOpen, onClose, onOpenSettings }: Googl
 
         {/* Footer */}
         <div className="px-5 py-3 border-t border-neutral-800 bg-neutral-950/60 flex items-center justify-between text-[11px] text-neutral-400">
-          <span>Configurabile interamente dal telefono</span>
+          <span>Accesso Google centralizzato</span>
           <button
             onClick={onClose}
             className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 transition-colors"

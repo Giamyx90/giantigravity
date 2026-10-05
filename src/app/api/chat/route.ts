@@ -89,12 +89,12 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 2. Google OAuth Mode o Google AI Studio API Key Mode (Cloud / Vercel / Smartphone)
-    if (!apiKey && !activeGoogleAccessToken) {
+    // 2. Google OAuth Mode (Cloud / Vercel / Smartphone)
+    if (!activeGoogleAccessToken && !apiKey) {
       return new Response(
         JSON.stringify({
           error:
-            'Autenticazione mancante. Tocca "Accedi con Google" per sbloccare l\'accesso senza API key oppure inserisci la tua API Key di Google AI Studio nelle impostazioni.',
+            'Autenticazione mancante. Tocca "Accedi con Google" per autenticare la tua sessione ed iniziare a programmare.',
         }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
@@ -134,9 +134,9 @@ export async function POST(req: NextRequest) {
           console.error('Agent error:', err);
           let errorMsg = err.message || 'Errore durante l\'esecuzione dell\'agente.';
           if (errorMsg.includes('ACCESS_TOKEN_SCOPE_INSUFFICIENT') || errorMsg.includes('insufficient authentication scopes')) {
-            errorMsg = 'Il tuo account Google è collegato, ma mancano i permessi speciali per Gemini (ACCESS_TOKEN_SCOPE_INSUFFICIENT). Inserisci la tua API Key di Google AI Studio nelle impostazioni per chattare subito senza blocchi!';
+            errorMsg = 'Il tuo account Google è collegato, ma mancano i permessi speciali per Gemini (ACCESS_TOKEN_SCOPE_INSUFFICIENT). Verifica di aver incluso l\'ambito "https://www.googleapis.com/auth/generative-language" nella schermata consenso di Google Cloud ed effettuato nuovamente il login.';
           } else if (errorMsg.includes('invalid authentication credentials')) {
-            errorMsg = 'Credenziali non valide o scadute (HTTP 401). Se usi un Access Token (ya29...), ricorda che dura 60 minuti e deve avere lo scope "generative-language". Per evitare scadenze continue, puoi usare la tua API Key di Google AI Studio nelle impostazioni.';
+            errorMsg = 'Sessione Google scaduta o credenziali non valide. Tocca "Accedi con Google" per rinnovare la sessione.';
           }
           sendEvent({
             type: 'error',
