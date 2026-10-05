@@ -29,6 +29,16 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+export interface ChatSession {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  repoContext: RepoContext;
+  conversationId?: string;
+  messages: ChatMessage[];
+}
+
 export interface RepoContext {
   owner: string;
   repo: string;

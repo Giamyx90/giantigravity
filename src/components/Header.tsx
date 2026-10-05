@@ -14,6 +14,7 @@ import {
   Zap,
   FolderGit2,
   Cpu,
+  History,
 } from 'lucide-react';
 import { GithubIcon } from '@/components/GithubIcon';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
@@ -31,6 +32,8 @@ interface HeaderProps {
   provider?: any;
   onOpenModelSelector?: () => void;
   isAgyAvailable?: boolean;
+  onOpenHistory?: () => void;
+  historyCount?: number;
 }
 
 export function Header({
@@ -44,6 +47,8 @@ export function Header({
   selectedModel = 'gemini-3.8-flash',
   onOpenModelSelector,
   isAgyAvailable,
+  onOpenHistory,
+  historyCount = 0,
 }: HeaderProps) {
   const [repos, setRepos] = useState<GitHubRepoItem[]>([]);
   const [branches, setBranches] = useState<string[]>([]);
@@ -196,6 +201,19 @@ export function Header({
               <Zap size={12} className="text-amber-400" />
               <span className="hidden sm:inline">{selectedModel.replace('gemini-', '')}</span>
               <ChevronDown size={11} className="text-neutral-400" />
+            </button>
+          )}
+
+          {onOpenHistory && (
+            <button
+              onClick={onOpenHistory}
+              className="relative p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
+              title="Storico conversazioni"
+            >
+              <History size={17} />
+              {historyCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-cyan-400" />
+              )}
             </button>
           )}
 

@@ -1,13 +1,23 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChatMessage, RepoContext, UserSettings, AgentStep } from '@/types';
+import { ChatMessage, RepoContext, UserSettings, AgentStep, ChatSession } from '@/types';
 import { Header } from '@/components/Header';
 import { MessageBubble } from '@/components/MessageBubble';
 import { ChatInput } from '@/components/ChatInput';
 import { SettingsModal } from '@/components/SettingsModal';
 import { ModelSelectorModal } from '@/components/ModelSelectorModal';
-import { Sparkles, GitBranch, Code2, Cpu, Smartphone, Lock, CheckCircle2 } from 'lucide-react';
+import { HistoryDrawer } from '@/components/HistoryDrawer';
+import {
+  getStoredSessions,
+  saveSession,
+  deleteSession,
+  clearAllSessions,
+  getActiveSessionId,
+  setActiveSessionId,
+  generateSessionTitle,
+} from '@/lib/history';
+import { Sparkles, GitBranch, Code2, Cpu, Smartphone, Lock, CheckCircle2, History } from 'lucide-react';
 import { GithubIcon } from '@/components/GithubIcon';
 import { useSession, signIn } from 'next-auth/react';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
@@ -19,7 +29,12 @@ export default function Home() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isRepoModalOpen, setIsRepoModalOpen] = useState(false);
   const [isModelModalOpen, setIsModelModalOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isAgyAvailable, setIsAgyAvailable] = useState<boolean | null>(null);
+
+  // History sessions list & active session
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeSessionId, setActiveSessionIdState] = useState<string | null>(null);
 
   // Settings & Context stored in localStorage for persistence on phone
   const [settings, setSettings] = useState<UserSettings>({
@@ -49,7 +64,7 @@ export default function Home() {
       });
   }, []);
 
-  // Load saved settings & repo from localStorage
+  // Load saved settings, repo & chat history from localStorage
   useEffect(() => {
     try {
       const savedSettings =
@@ -69,6 +84,22 @@ export default function Home() {
         localStorage.getItem('antigravity_repo');
       if (savedRepo) {
         setRepoContext(JSON.parse(savedRepo));
+      }
+
+      // Carica lo storico delle conversazioni
+      const loadedSessions = getStoredSessions();
+      setSessions(loadedSessions);
+      const activeId = getActiveSessionId();
+      if (activeId) {
+        const current = loadedSessions.find((s) => s.id === activeId);
+        if (current) {
+          setActiveSessionIdState(current.id);
+          setMessages(current.messages || []);
+          setConversationId(current.conversationId);
+          if (current.repoContext) {
+            setRepoContext(current.repoContext);
+          }
+        }
       }
     } catch (e) {
       console.error(e);
@@ -120,8 +151,36 @@ export default function Home() {
 
   const handleNewChat = () => {
     if (isLoading) return;
+    setActiveSessionIdState(null);
+    setActiveSessionId(null);
     setConversationId(undefined);
     setMessages([]);
+  };
+
+  const handleSelectSession = (session: ChatSession) => {
+    if (isLoading) return;
+    setActiveSessionIdState(session.id);
+    setActiveSessionId(session.id);
+    setMessages(session.messages || []);
+    setConversationId(session.conversationId);
+    if (session.repoContext) {
+      setRepoContext(session.repoContext);
+    }
+  };
+
+  const handleDeleteSession = (sessionId: string) => {
+    deleteSession(sessionId);
+    const updated = getStoredSessions();
+    setSessions(updated);
+    if (activeSessionId === sessionId) {
+      handleNewChat();
+    }
+  };
+
+  const handleClearAllSessions = () => {
+    clearAllSessions();
+    setSessions([]);
+    handleNewChat();
   };
 
   const scrollToBottom = () => {
@@ -148,6 +207,12 @@ export default function Home() {
       return;
     }
 
+    const targetSessionId = activeSessionId || `session-${Date.now()}`;
+    if (!activeSessionId) {
+      setActiveSessionIdState(targetSessionId);
+      setActiveSessionId(targetSessionId);
+    }
+
     let activeRepo = repoContext;
     if (!activeRepo.owner || !activeRepo.repo) {
       activeRepo = { owner: 'local', repo: 'giantigravity', branch: 'main' };
@@ -170,8 +235,19 @@ export default function Home() {
       timestamp: Date.now(),
     };
 
-    setMessages((prev) => [...prev, userMessage, initialAssistantMessage]);
+    let currentMessages: ChatMessage[] = [...messages, userMessage, initialAssistantMessage];
+    let latestConversationId: string | undefined = conversationId;
+
+    setMessages(currentMessages);
     setIsLoading(true);
+
+    // Multi-turn history: includi i messaggi precedenti completi
+    const historyPayload = messages
+      .filter((m) => m.content && m.content.trim())
+      .map((m) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      }));
 
     try {
       const response = await fetch('/api/chat', {
@@ -181,6 +257,7 @@ export default function Home() {
           prompt: text,
           repoContext: activeRepo,
           conversationId,
+          history: historyPayload,
           googleAccessToken: (session as any)?.accessToken || settings.googleAccessToken,
           settings,
         }),
@@ -217,61 +294,59 @@ export default function Home() {
 
               if (event.type === 'step') {
                 const updatedStep: AgentStep = event.step;
-                setMessages((prev) =>
-                  prev.map((msg) => {
-                    if (msg.id !== assistantId) return msg;
-                    const existingSteps = msg.steps || [];
-                    const stepIndex = existingSteps.findIndex((s) => s.id === updatedStep.id);
+                currentMessages = currentMessages.map((msg) => {
+                  if (msg.id !== assistantId) return msg;
+                  const existingSteps = msg.steps || [];
+                  const stepIndex = existingSteps.findIndex((s) => s.id === updatedStep.id);
 
-                    let newSteps: AgentStep[];
-                    if (stepIndex >= 0) {
-                      newSteps = [...existingSteps];
-                      newSteps[stepIndex] = updatedStep;
-                    } else {
-                      newSteps = [...existingSteps, updatedStep];
-                    }
+                  let newSteps: AgentStep[];
+                  if (stepIndex >= 0) {
+                    newSteps = [...existingSteps];
+                    newSteps[stepIndex] = updatedStep;
+                  } else {
+                    newSteps = [...existingSteps, updatedStep];
+                  }
 
-                    return { ...msg, steps: newSteps };
-                  })
-                );
+                  return { ...msg, steps: newSteps };
+                });
+                setMessages(currentMessages);
               } else if (event.type === 'chunk') {
                 const chunkText = event.text;
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === assistantId ? { ...msg, content: msg.content + chunkText } : msg
-                  )
+                currentMessages = currentMessages.map((msg) =>
+                  msg.id === assistantId ? { ...msg, content: msg.content + chunkText } : msg
                 );
+                setMessages(currentMessages);
               } else if (event.type === 'init') {
                 if (event.conversationId) {
+                  latestConversationId = event.conversationId;
                   setConversationId(event.conversationId);
                 }
               } else if (event.type === 'done') {
                 if (event.conversationId) {
+                  latestConversationId = event.conversationId;
                   setConversationId(event.conversationId);
                 }
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === assistantId
-                      ? {
-                          ...msg,
-                          content: event.reply || msg.content,
-                          steps: event.steps || msg.steps,
-                          conversationId: event.conversationId,
-                        }
-                      : msg
-                  )
+                currentMessages = currentMessages.map((msg) =>
+                  msg.id === assistantId
+                    ? {
+                        ...msg,
+                        content: event.reply || msg.content,
+                        steps: event.steps || msg.steps,
+                        conversationId: event.conversationId,
+                      }
+                    : msg
                 );
+                setMessages(currentMessages);
               } else if (event.type === 'error') {
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === assistantId
-                      ? {
-                          ...msg,
-                          content: `⚠️ **Errore riscontrato dall'agente:**\n${event.error}`,
-                        }
-                      : msg
-                  )
+                currentMessages = currentMessages.map((msg) =>
+                  msg.id === assistantId
+                    ? {
+                        ...msg,
+                        content: `⚠️ **Errore riscontrato dall'agente:**\n${event.error}`,
+                      }
+                    : msg
                 );
+                setMessages(currentMessages);
               }
             } catch (err) {
               console.error('Error parsing SSE event', err);
@@ -280,18 +355,36 @@ export default function Home() {
         }
       }
     } catch (err: any) {
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === assistantId
-            ? {
-                ...msg,
-                content: `⚠️ **Errore:** ${err.message || 'Impossibile completare la richiesta.'}`,
-              }
-            : msg
-        )
+      currentMessages = currentMessages.map((msg) =>
+        msg.id === assistantId
+          ? {
+              ...msg,
+              content: `⚠️ **Errore:** ${err.message || 'Impossibile completare la richiesta.'}`,
+            }
+          : msg
       );
+      setMessages(currentMessages);
     } finally {
       setIsLoading(false);
+      // Salva e sincronizza la sessione nello storico persistente
+      try {
+        const stored = getStoredSessions();
+        const existing = stored.find((s) => s.id === targetSessionId);
+        const sessionTitle = existing?.title || generateSessionTitle(text);
+        const sessionToSave: ChatSession = {
+          id: targetSessionId,
+          title: sessionTitle,
+          createdAt: existing?.createdAt || Date.now(),
+          updatedAt: Date.now(),
+          repoContext: activeRepo,
+          conversationId: latestConversationId,
+          messages: currentMessages,
+        };
+        saveSession(sessionToSave);
+        setSessions(getStoredSessions());
+      } catch (saveErr) {
+        console.error('Errore durante il salvataggio della sessione:', saveErr);
+      }
     }
   };
 
@@ -303,6 +396,8 @@ export default function Home() {
         onRepoChange={handleRepoChange}
         onNewChat={handleNewChat}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenHistory={() => setIsHistoryOpen(true)}
+        historyCount={sessions.length}
         hasKeys={hasConfig}
         githubToken={settings.githubToken || ''}
         isRepoModalOpen={isRepoModalOpen}
@@ -327,6 +422,34 @@ export default function Home() {
                 L&apos;IDE agentico per sviluppare sul tuo repo GitHub dallo smartphone con Google Gemini
               </p>
             </div>
+
+            {/* Quick Resume Recent Chat from History */}
+            {sessions.length > 0 && (
+              <div
+                onClick={() => setIsHistoryOpen(true)}
+                className="cursor-pointer p-3 bg-neutral-900/90 border border-neutral-800 hover:border-cyan-500/50 rounded-2xl text-left flex items-center justify-between text-xs transition-all shadow-md group"
+              >
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                  <div className="p-2 rounded-xl bg-cyan-950/60 text-cyan-400 border border-cyan-800/40 shrink-0 group-hover:scale-105 transition-transform">
+                    <History size={16} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-white block text-xs">Storico Conversazioni</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800/60 font-mono font-medium">
+                        {sessions.length} {sessions.length === 1 ? 'chat' : 'chat'}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-neutral-400 truncate block mt-0.5">
+                      Ultima: &ldquo;{sessions[0].title}&rdquo;
+                    </span>
+                  </div>
+                </div>
+                <span className="text-[11px] text-cyan-400 font-medium group-hover:translate-x-0.5 transition-transform shrink-0">
+                  Visualizza ➔
+                </span>
+              </div>
+            )}
 
             {/* Google Sign-in Card */}
             <GoogleSignInButton
@@ -516,6 +639,18 @@ export default function Home() {
         onClose={() => setIsModelModalOpen(false)}
         selectedModel={settings.selectedModel}
         onSelectModel={handleSelectModel}
+      />
+
+      {/* History Drawer Modal */}
+      <HistoryDrawer
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        sessions={sessions}
+        activeSessionId={activeSessionId}
+        onSelectSession={handleSelectSession}
+        onNewChat={handleNewChat}
+        onDeleteSession={handleDeleteSession}
+        onClearAll={handleClearAllSessions}
       />
     </div>
   );

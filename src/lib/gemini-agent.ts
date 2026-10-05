@@ -128,7 +128,7 @@ export interface AgentRunParams {
   modelName?: string;
   repoContext: RepoContext;
   prompt: string;
-  history?: Array<{ role: 'user' | 'model'; parts: any[] }>;
+  history?: Array<{ role: 'user' | 'model' | 'assistant'; parts: any[] }>;
   onStepUpdate: (step: AgentStep) => void;
   onChunk: (chunk: string) => void;
 }
@@ -175,11 +175,32 @@ Linee guida operative:
 5. Se l'utente ti chiede di creare una funzione o correggere un bug, esegui autonomamente tutti i passaggi necessari (ispezione, lettura, scrittura e verifica).
 Rispondi in lingua italiana.`;
 
+  // Normalizza e sanifica lo storico per garantire l'alternanza corretta dei ruoli richiesta da Gemini
+  const sanitizedHistory: Array<{ role: 'user' | 'model'; parts: any[] }> = [];
+  for (const item of (history || [])) {
+    if (!item || !item.parts || item.parts.length === 0) continue;
+    const role: 'user' | 'model' = (item.role === 'assistant' || item.role === 'model') ? 'model' : 'user';
+    if (sanitizedHistory.length > 0 && sanitizedHistory[sanitizedHistory.length - 1].role === role) {
+      sanitizedHistory[sanitizedHistory.length - 1].parts.push(...item.parts);
+    } else {
+      sanitizedHistory.push({ role, parts: [...item.parts] });
+    }
+  }
+
+  // Se l'ultimo messaggio dello storico era 'user', uniscilo al prompt corrente per evitare turni user consecutivi
+  let promptParts: any[] = [{ text: prompt }];
+  if (sanitizedHistory.length > 0 && sanitizedHistory[sanitizedHistory.length - 1].role === 'user') {
+    const lastUser = sanitizedHistory.pop();
+    if (lastUser) {
+      promptParts = [...lastUser.parts, ...promptParts];
+    }
+  }
+
   const contents: any[] = [
-    ...history,
+    ...sanitizedHistory,
     {
       role: 'user',
-      parts: [{ text: prompt }],
+      parts: promptParts,
     },
   ];
 
