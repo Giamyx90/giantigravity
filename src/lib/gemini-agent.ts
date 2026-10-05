@@ -187,22 +187,70 @@ Rispondi in lingua italiana.`;
   let finalAnswer = '';
   const maxLoops = 10;
   let loopCount = 0;
+  let activeModel = modelName;
 
   while (loopCount < maxLoops) {
     loopCount++;
 
-    const response = await ai.models.generateContent({
-      model: modelName,
-      contents,
-      config: {
-        systemInstruction,
-        tools: [
-          {
-            functionDeclarations: agentToolDeclarations as any,
+    let response: any;
+    let attempts = 0;
+    const maxAttempts = 4;
+
+    while (attempts < maxAttempts) {
+      attempts++;
+      try {
+        response = await ai.models.generateContent({
+          model: activeModel,
+          contents,
+          config: {
+            systemInstruction,
+            tools: [
+              {
+                functionDeclarations: agentToolDeclarations as any,
+              },
+            ],
           },
-        ],
-      },
-    });
+        });
+        break;
+      } catch (err: any) {
+        const errorText = err?.message || String(err);
+        const isCapacityError =
+          err?.status === 503 ||
+          err?.status === 429 ||
+          errorText.includes('503') ||
+          errorText.includes('high demand') ||
+          errorText.includes('UNAVAILABLE') ||
+          errorText.includes('RESOURCE_EXHAUSTED');
+
+        if (isCapacityError && attempts < maxAttempts) {
+          const waitMs = attempts * 1500;
+          console.warn(`[Gemini Agent] Server Google ad alta richiesta (${activeModel}). Nuovo tentativo ${attempts}/${maxAttempts} tra ${waitMs}ms...`);
+
+          onStepUpdate({
+            id: `retry-${Date.now()}`,
+            tool: 'system',
+            summary: `Server Google ad alta richiesta (503). Nuovo tentativo ${attempts}/${maxAttempts} su ${activeModel}...`,
+            status: 'running',
+            args: { model: activeModel, waitMs },
+            timestamp: Date.now(),
+          });
+
+          await new Promise((r) => setTimeout(r, waitMs));
+
+          // Se dopo 2 tentativi il modello è ancora congestionato, effettua fallback su modello alternativo
+          if (attempts >= 2) {
+            const fallback = activeModel.includes('3.8')
+              ? 'gemini-2.5-flash'
+              : (activeModel.includes('2.5') ? 'gemini-2.0-flash' : 'gemini-2.5-flash');
+            console.warn(`[Gemini Agent] Switch fallback temporaneo da ${activeModel} a ${fallback}...`);
+            activeModel = fallback;
+          }
+          continue;
+        }
+
+        throw err;
+      }
+    }
 
     const candidate = response.candidates?.[0];
     if (!candidate || !candidate.content) {
