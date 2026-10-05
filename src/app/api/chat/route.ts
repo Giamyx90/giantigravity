@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
           console.error('Agent error:', err);
           let errorMsg = err.message || 'Errore durante l\'esecuzione dell\'agente.';
           if (errorMsg.includes('ACCESS_TOKEN_SCOPE_INSUFFICIENT') || errorMsg.includes('insufficient authentication scopes')) {
-            errorMsg = 'Il tuo account Google è collegato, ma mancano i permessi speciali per Gemini (ACCESS_TOKEN_SCOPE_INSUFFICIENT). Verifica di aver incluso l\'ambito "https://www.googleapis.com/auth/generative-language" nella schermata consenso di Google Cloud ed effettuato nuovamente il login.';
+            errorMsg = 'Il tuo account Google è collegato, ma mancano i permessi speciali per Gemini (ACCESS_TOKEN_SCOPE_INSUFFICIENT). Verifica di aver incluso l\'ambito "https://www.googleapis.com/auth/cloud-platform" nella schermata consenso di Google Cloud ed effettuato nuovamente il login.';
           } else if (errorMsg.includes('invalid authentication credentials')) {
             errorMsg = 'Sessione Google scaduta o credenziali non valide. Tocca "Accedi con Google" per rinnovare la sessione.';
           }

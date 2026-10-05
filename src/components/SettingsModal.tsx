@@ -226,7 +226,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
                   </div>
                   <p className="leading-relaxed">
                     1. Aggiungi la tua email agli <strong>Utenti di test</strong> (Test users) nella Schermata consenso OAuth.<br />
-                    2. Includi l&apos;ambito <strong>https://www.googleapis.com/auth/generative-language</strong>.
+                    2. Includi l&apos;ambito <strong>https://www.googleapis.com/auth/cloud-platform</strong>.
                   </p>
                 </div>
               </div>
