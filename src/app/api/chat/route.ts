@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { runAgent } from '@/lib/gemini-agent';
-import { AgentStep, RepoContext } from '@/types';
+import { runAgyAgent, isAgyInstalled } from '@/lib/agy-agent';
+import { AgentStep, RepoContext, UserSettings } from '@/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,44 +13,119 @@ export async function POST(req: NextRequest) {
       prompt,
       repoContext,
       history = [],
+      conversationId,
       settings = {},
     }: {
       prompt: string;
-      repoContext: RepoContext;
+      repoContext?: RepoContext;
       history?: any[];
-      settings?: {
-        geminiApiKey?: string;
-        githubToken?: string;
-        selectedModel?: string;
-      };
+      conversationId?: string;
+      settings?: Partial<UserSettings>;
     } = body;
 
     const apiKey = settings.geminiApiKey || process.env.GEMINI_API_KEY;
     const githubToken = settings.githubToken || process.env.GITHUB_TOKEN;
     const modelName = settings.selectedModel || process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+    const provider = settings.provider || (apiKey ? 'gemini_api' : 'antigravity');
 
+    const encoder = new TextEncoder();
+
+    // 1. Antigravity CLI Mode (Nessuna API Key richiesta, Zero Rate Limit)
+    if (provider === 'antigravity' || (!apiKey && isAgyInstalled())) {
+      if (!isAgyInstalled()) {
+        return new Response(
+          JSON.stringify({
+            error:
+              'Antigravity CLI (agy) non trovato su questo computer. Installa Antigravity per Windows oppure seleziona la modalità "API Key personale" nelle impostazioni.',
+          }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Costruisci il prompt contestualizzato se c'è un repository specificato
+      let fullPrompt = prompt;
+      if (repoContext?.owner && repoContext?.repo && repoContext.owner !== 'local') {
+        fullPrompt = `[Repository: ${repoContext.owner}/${repoContext.repo} | Branch: ${repoContext.branch || 'main'}]\n${prompt}`;
+      }
+
+      const stream = new ReadableStream({
+        async start(controller) {
+          function sendEvent(data: Record<string, any>) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+          }
+
+          try {
+            const result = await runAgyAgent({
+              prompt: fullPrompt,
+              modelName,
+              conversationId,
+              onStepUpdate: (step: AgentStep) => {
+                sendEvent({ type: 'step', step });
+              },
+              onChunk: (chunk: string) => {
+                sendEvent({ type: 'chunk', text: chunk });
+              },
+              onInit: (data) => {
+                sendEvent({ type: 'init', conversationId: data.conversationId });
+              },
+            });
+
+            sendEvent({
+              type: 'done',
+              reply: result.reply,
+              steps: result.steps,
+              conversationId: result.conversationId,
+            });
+          } catch (err: any) {
+            console.error('Antigravity CLI runner error:', err);
+            sendEvent({
+              type: 'error',
+              error: err.message || 'Errore durante l\'esecuzione con Antigravity CLI.',
+            });
+          } finally {
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          'Content-Type': 'text/event-stream; charset=utf-8',
+          'Cache-Control': 'no-cache, no-transform',
+          Connection: 'keep-alive',
+        },
+      });
+    }
+
+    // 2. Google AI Studio API Key Mode (Modalità classica / Fallback Cloud)
     if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: 'Chiave API Gemini mancante. Tocca l\'icona delle impostazioni in alto per configurare la tua chiave personale.' }),
+        JSON.stringify({
+          error:
+            'Chiave API Gemini mancante. Tocca l\'icona delle impostazioni in alto per inserire la tua API Key di Google AI Studio oppure attiva la modalità "Antigravity CLI".',
+        }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     if (!githubToken) {
       return new Response(
-        JSON.stringify({ error: 'GitHub Token mancante. Tocca l\'icona delle impostazioni per configurare il tuo token personale.' }),
+        JSON.stringify({
+          error:
+            'GitHub Token mancante per la modalità API. Configura il tuo Personal Access Token nelle impostazioni.',
+        }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     if (!repoContext?.owner || !repoContext?.repo) {
       return new Response(
-        JSON.stringify({ error: 'Nessun repository selezionato. Scegli un repository GitHub dall\'intestazione.' }),
+        JSON.stringify({
+          error: 'Nessun repository selezionato. Scegli un repository GitHub dall\'intestazione.',
+        }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
-
-    const encoder = new TextEncoder();
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -76,7 +152,10 @@ export async function POST(req: NextRequest) {
           sendEvent({ type: 'done', reply: result.reply, steps: result.steps });
         } catch (err: any) {
           console.error('Agent error:', err);
-          sendEvent({ type: 'error', error: err.message || 'Errore durante l\'esecuzione dell\'agente.' });
+          sendEvent({
+            type: 'error',
+            error: err.message || 'Errore durante l\'esecuzione dell\'agente.',
+          });
         } finally {
           controller.close();
         }

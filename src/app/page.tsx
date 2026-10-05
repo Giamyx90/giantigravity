@@ -19,17 +19,19 @@ export default function Home() {
 
   // Settings & Context stored in localStorage for persistence on phone
   const [settings, setSettings] = useState<UserSettings>({
+    provider: 'antigravity',
     githubToken: '',
     geminiApiKey: '',
     selectedModel: 'gemini-3.8-flash',
   });
 
   const [repoContext, setRepoContext] = useState<RepoContext>({
-    owner: '',
-    repo: '',
+    owner: 'local',
+    repo: 'giantigravity',
     branch: 'main',
   });
 
+  const [conversationId, setConversationId] = useState<string | undefined>(undefined);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load saved settings & repo from localStorage
@@ -40,13 +42,21 @@ export default function Home() {
         localStorage.getItem('antigravity_settings');
       if (savedSettings) {
         const parsed = JSON.parse(savedSettings);
+        if (!parsed.provider) {
+          parsed.provider = parsed.geminiApiKey ? 'gemini_api' : 'antigravity';
+        }
         setSettings(parsed);
-        if (!parsed.githubToken || !parsed.geminiApiKey) {
+        if (parsed.provider === 'gemini_api' && !parsed.geminiApiKey) {
           setIsSettingsOpen(true);
         }
       } else {
-        // Nuova sessione/utente: apri subito le impostazioni per configurare le proprie chiavi
-        setIsSettingsOpen(true);
+        // Nuova sessione: default su Antigravity CLI nativo senza configurazione obbligatoria
+        setSettings({
+          provider: 'antigravity',
+          githubToken: '',
+          geminiApiKey: '',
+          selectedModel: 'gemini-3.8-flash',
+        });
       }
       const savedRepo =
         localStorage.getItem('giantigravity_repo') ||
@@ -63,8 +73,8 @@ export default function Home() {
   const handleSaveSettings = (newSettings: UserSettings) => {
     setSettings(newSettings);
     localStorage.setItem('giantigravity_settings', JSON.stringify(newSettings));
-    // Se ha inserito le credenziali e non ha ancora scelto un repo, apri subito la selezione del repo!
-    if (newSettings.githubToken && newSettings.geminiApiKey && !repoContext.owner) {
+    // Se ha inserito le credenziali e non ha ancora scelto un repo, apri la selezione
+    if (newSettings.provider === 'gemini_api' && newSettings.githubToken && newSettings.geminiApiKey && (!repoContext.owner || repoContext.owner === 'local')) {
       setTimeout(() => {
         setIsRepoModalOpen(true);
       }, 500);
@@ -73,12 +83,14 @@ export default function Home() {
 
   const handleClearSettings = () => {
     const emptySettings: UserSettings = {
+      provider: 'antigravity',
       githubToken: '',
       geminiApiKey: '',
-      selectedModel: 'gemini-2.5-flash',
+      selectedModel: 'gemini-3.8-flash',
     };
     setSettings(emptySettings);
-    setRepoContext({ owner: '', repo: '', branch: 'main' });
+    setConversationId(undefined);
+    setRepoContext({ owner: 'local', repo: 'giantigravity', branch: 'main' });
     localStorage.removeItem('giantigravity_settings');
     localStorage.removeItem('giantigravity_repo');
     localStorage.removeItem('antigravity_settings');
@@ -98,6 +110,7 @@ export default function Home() {
 
   const handleNewChat = () => {
     if (isLoading) return;
+    setConversationId(undefined);
     setMessages([]);
   };
 
@@ -109,7 +122,8 @@ export default function Home() {
     scrollToBottom();
   }, [messages, isLoading]);
 
-  const hasConfig = Boolean(settings.githubToken && settings.geminiApiKey);
+  const isAntigravity = (settings.provider || 'antigravity') === 'antigravity';
+  const hasConfig = isAntigravity ? true : Boolean(settings.geminiApiKey);
 
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
@@ -119,9 +133,10 @@ export default function Home() {
       return;
     }
 
-    if (!repoContext.owner || !repoContext.repo) {
-      setIsRepoModalOpen(true);
-      return;
+    let activeRepo = repoContext;
+    if (!activeRepo.owner || !activeRepo.repo) {
+      activeRepo = { owner: 'local', repo: 'giantigravity', branch: 'main' };
+      setRepoContext(activeRepo);
     }
 
     const userMessage: ChatMessage = {
@@ -149,7 +164,8 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: text,
-          repoContext,
+          repoContext: activeRepo,
+          conversationId,
           settings,
         }),
       });
@@ -209,7 +225,14 @@ export default function Home() {
                     msg.id === assistantId ? { ...msg, content: msg.content + chunkText } : msg
                   )
                 );
+              } else if (event.type === 'init') {
+                if (event.conversationId) {
+                  setConversationId(event.conversationId);
+                }
               } else if (event.type === 'done') {
+                if (event.conversationId) {
+                  setConversationId(event.conversationId);
+                }
                 setMessages((prev) =>
                   prev.map((msg) =>
                     msg.id === assistantId
@@ -217,6 +240,7 @@ export default function Home() {
                           ...msg,
                           content: event.reply || msg.content,
                           steps: event.steps || msg.steps,
+                          conversationId: event.conversationId,
                         }
                       : msg
                   )
@@ -264,10 +288,11 @@ export default function Home() {
         onNewChat={handleNewChat}
         onOpenSettings={() => setIsSettingsOpen(true)}
         hasKeys={hasConfig}
-        githubToken={settings.githubToken}
+        githubToken={settings.githubToken || ''}
         isRepoModalOpen={isRepoModalOpen}
         setIsRepoModalOpen={setIsRepoModalOpen}
         selectedModel={settings.selectedModel}
+        provider={settings.provider || 'antigravity'}
         onOpenModelSelector={() => setIsModelModalOpen(true)}
       />
 

@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { UserSettings, AVAILABLE_MODELS } from '@/types';
-import { X, Key, Sparkles, Check, ExternalLink, ShieldCheck, Trash2 } from 'lucide-react';
+import { UserSettings, AVAILABLE_MODELS, AIProvider } from '@/types';
+import { X, Key, Sparkles, Check, ExternalLink, ShieldCheck, Trash2, Cpu, CheckCircle2, AlertCircle } from 'lucide-react';
 import { GithubIcon } from '@/components/GithubIcon';
 
 interface SettingsModalProps {
@@ -14,22 +14,36 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: SettingsModalProps) {
+  const [provider, setProvider] = useState<AIProvider>(settings.provider || 'antigravity');
   const [githubToken, setGithubToken] = useState(settings.githubToken || '');
   const [geminiApiKey, setGeminiApiKey] = useState(settings.geminiApiKey || '');
-  const [selectedModel, setSelectedModel] = useState(settings.selectedModel || 'gemini-2.5-flash');
+  const [selectedModel, setSelectedModel] = useState(settings.selectedModel || 'gemini-3.8-flash');
   const [savedNotice, setSavedNotice] = useState(false);
+  const [antigravityStatus, setAntigravityStatus] = useState<{ available: boolean; path?: string } | null>(null);
 
   useEffect(() => {
+    setProvider(settings.provider || 'antigravity');
     setGithubToken(settings.githubToken || '');
     setGeminiApiKey(settings.geminiApiKey || '');
-    setSelectedModel(settings.selectedModel || 'gemini-2.5-flash');
+    setSelectedModel(settings.selectedModel || 'gemini-3.8-flash');
   }, [settings, isOpen]);
+
+  // Controlla la disponibilità del motore Antigravity sul PC
+  useEffect(() => {
+    if (isOpen) {
+      fetch('/api/antigravity/status')
+        .then((res) => res.json())
+        .then((data) => setAntigravityStatus(data))
+        .catch(() => setAntigravityStatus({ available: false }));
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     onSave({
+      provider,
       githubToken: githubToken.trim(),
       geminiApiKey: geminiApiKey.trim(),
       selectedModel,
@@ -42,13 +56,14 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
   };
 
   const handleReset = () => {
-    if (confirm('Vuoi rimuovere le tue credenziali da questo dispositivo?')) {
+    if (confirm('Vuoi rimuovere le tue impostazioni e credenziali da questo dispositivo?')) {
       setGithubToken('');
       setGeminiApiKey('');
+      setProvider('antigravity');
       if (onClear) {
         onClear();
       } else {
-        onSave({ githubToken: '', geminiApiKey: '', selectedModel });
+        onSave({ provider: 'antigravity', githubToken: '', geminiApiKey: '', selectedModel });
       }
     }
   };
@@ -60,7 +75,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-800">
           <div className="flex items-center gap-2">
             <Sparkles size={18} className="text-cyan-400" />
-            <h2 className="text-base font-semibold text-neutral-100">Configurazione Personale</h2>
+            <h2 className="text-base font-semibold text-neutral-100">Configurazione Motore AI</h2>
           </div>
           <button
             onClick={onClose}
@@ -72,21 +87,116 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
 
         {/* Form Body */}
         <form onSubmit={handleSave} className="p-5 space-y-4 overflow-y-auto flex-1 text-xs">
-          {/* Privacy & Multi-User notice */}
-          <div className="p-3 bg-cyan-950/30 border border-cyan-800/40 rounded-xl flex items-start gap-2.5 text-[11px] text-cyan-200/90 leading-relaxed">
-            <ShieldCheck size={18} className="text-cyan-400 shrink-0 mt-0.5" />
-            <div>
-              <span className="font-semibold block text-cyan-300 mb-0.5">Credenziali 100% Personali & Private</span>
-              Nessuna chiave viene salvata sul server. I tuoi dati restano esclusivamente nella memoria locale di questo dispositivo (browser/telefono). Chiunque acceda alla web app deve configurare le proprie chiavi personali.
+          {/* Modalità / Engine Selector */}
+          <div className="space-y-2">
+            <label className="text-neutral-300 font-medium block">
+              Motore di Esecuzione AI
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setProvider('antigravity')}
+                className={`p-3 rounded-xl border text-left flex flex-col gap-1 transition-all ${
+                  provider === 'antigravity'
+                    ? 'border-cyan-500 bg-cyan-950/30 text-white'
+                    : 'border-neutral-800 bg-neutral-950/60 text-neutral-400 hover:border-neutral-700'
+                }`}
+              >
+                <div className="flex items-center gap-1.5 font-semibold text-xs text-cyan-300">
+                  <Cpu size={14} />
+                  <span>Antigravity CLI</span>
+                </div>
+                <span className="text-[10px] text-neutral-400 leading-tight">
+                  Zero limiti, nessuna API Key. Usa la tua sessione Antigravity.
+                </span>
+                <div className="mt-1 flex items-center gap-1 text-[9px]">
+                  {antigravityStatus?.available ? (
+                    <span className="text-emerald-400 flex items-center gap-1 font-medium">
+                      <CheckCircle2 size={10} /> Connesso al PC
+                    </span>
+                  ) : (
+                    <span className="text-neutral-500">Rilevamento in corso...</span>
+                  )}
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setProvider('gemini_api')}
+                className={`p-3 rounded-xl border text-left flex flex-col gap-1 transition-all ${
+                  provider === 'gemini_api'
+                    ? 'border-cyan-500 bg-cyan-950/30 text-white'
+                    : 'border-neutral-800 bg-neutral-950/60 text-neutral-400 hover:border-neutral-700'
+                }`}
+              >
+                <div className="flex items-center gap-1.5 font-semibold text-xs text-amber-300">
+                  <Key size={14} />
+                  <span>Google AI Studio</span>
+                </div>
+                <span className="text-[10px] text-neutral-400 leading-tight">
+                  Usa API Key personale (ideale per server cloud come Vercel).
+                </span>
+                <div className="mt-1 text-[9px] text-neutral-500">
+                  Quote AI Studio
+                </div>
+              </button>
             </div>
           </div>
+
+          {/* Privacy Notice */}
+          <div className="p-3 bg-cyan-950/20 border border-cyan-800/30 rounded-xl flex items-start gap-2.5 text-[11px] text-cyan-200/90 leading-relaxed">
+            <ShieldCheck size={18} className="text-cyan-400 shrink-0 mt-0.5" />
+            <div>
+              {provider === 'antigravity' ? (
+                <>
+                  <span className="font-semibold block text-cyan-300 mb-0.5">Modalità Antigravity Windows Attiva</span>
+                  Le richieste vengono eseguite direttamente tramite la CLI di Antigravity sul tuo PC Windows. Puoi usare la webapp dal browser o dal tuo smartphone senza preoccuparti delle limitazioni delle API Key.
+                </>
+              ) : (
+                <>
+                  <span className="font-semibold block text-cyan-300 mb-0.5">Credenziali Client-Side</span>
+                  Nessuna chiave viene salvata sul server. I tuoi dati restano esclusivamente nella memoria locale di questo dispositivo.
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Gemini API Key (Visible only in gemini_api mode) */}
+          {provider === 'gemini_api' && (
+            <div className="space-y-1.5 animate-fade-in">
+              <label className="flex items-center justify-between text-neutral-300 font-medium">
+                <span className="flex items-center gap-1.5">
+                  <Key size={14} className="text-cyan-400" />
+                  La tua Google Gemini API Key
+                </span>
+                <a
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-cyan-400 hover:underline flex items-center gap-1 text-[11px]"
+                >
+                  Ottieni chiave gratuita <ExternalLink size={10} />
+                </a>
+              </label>
+              <input
+                type="password"
+                value={geminiApiKey}
+                onChange={(e) => setGeminiApiKey(e.target.value)}
+                placeholder="AIzaSyxxxxxxxxxxxxxxxxxxxx"
+                className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-neutral-200 placeholder-neutral-600 focus:outline-none focus:border-cyan-500 font-mono"
+              />
+              <p className="text-[11px] text-neutral-500">
+                Soggetto alle quote e ai limiti di chiamate al minuto del piano Google AI Studio.
+              </p>
+            </div>
+          )}
 
           {/* GitHub Token */}
           <div className="space-y-1.5">
             <label className="flex items-center justify-between text-neutral-300 font-medium">
               <span className="flex items-center gap-1.5">
                 <GithubIcon size={14} className="text-neutral-400" />
-                Il tuo GitHub Personal Access Token (PAT)
+                GitHub Personal Access Token (Opzionale)
               </span>
               <a
                 href="https://github.com/settings/tokens/new?scopes=repo"
@@ -105,35 +215,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
               className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-neutral-200 placeholder-neutral-600 focus:outline-none focus:border-cyan-500 font-mono"
             />
             <p className="text-[11px] text-neutral-500">
-              Permette a Gemini di leggere e modificare solo i repository a cui il tuo account GitHub ha accesso.
-            </p>
-          </div>
-
-          {/* Gemini API Key */}
-          <div className="space-y-1.5">
-            <label className="flex items-center justify-between text-neutral-300 font-medium">
-              <span className="flex items-center gap-1.5">
-                <Key size={14} className="text-cyan-400" />
-                La tua Google Gemini API Key
-              </span>
-              <a
-                href="https://aistudio.google.com/app/apikey"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-cyan-400 hover:underline flex items-center gap-1 text-[11px]"
-              >
-                Ottieni chiave gratuita <ExternalLink size={10} />
-              </a>
-            </label>
-            <input
-              type="password"
-              value={geminiApiKey}
-              onChange={(e) => setGeminiApiKey(e.target.value)}
-              placeholder="AIzaSyxxxxxxxxxxxxxxxxxxxx"
-              className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-neutral-200 placeholder-neutral-600 focus:outline-none focus:border-cyan-500 font-mono"
-            />
-            <p className="text-[11px] text-neutral-500">
-              Ogni utente usa la propria quota gratuita di Google Gemini (Gemini 2.5 Flash / Pro).
+              Necessario solo se desideri sincronizzare o effettuare commit verso repository GitHub remoti privati.
             </p>
           </div>
 
@@ -187,7 +269,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
                     <span>Salvato!</span>
                   </>
                 ) : (
-                  <span>Salva Credenziali</span>
+                  <span>Salva Configurazione</span>
                 )}
               </button>
             </div>

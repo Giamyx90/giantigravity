@@ -16,6 +16,7 @@ import {
   ChevronDown,
   ChevronRight,
   ExternalLink,
+  Terminal,
 } from 'lucide-react';
 
 interface ToolStepCardProps {
@@ -30,11 +31,17 @@ export function ToolStepCard({ step }: ToolStepCardProps) {
       case 'view_file':
         return <FileText size={15} className="text-cyan-400" />;
       case 'list_directory':
+      case 'list_dir':
         return <FolderTree size={15} className="text-amber-400" />;
       case 'search_code':
+      case 'grep_search':
         return <Search size={15} className="text-purple-400" />;
       case 'edit_file':
+      case 'write_to_file':
+      case 'replace_file_content':
         return <PenLine size={15} className="text-emerald-400" />;
+      case 'run_command':
+        return <Terminal size={15} className="text-indigo-400" />;
       case 'create_branch':
         return <GitBranch size={15} className="text-blue-400" />;
       case 'create_pull_request':

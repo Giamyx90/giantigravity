@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { RepoContext, GitHubRepoItem } from '@/types';
+import { RepoContext, GitHubRepoItem, AIProvider } from '@/types';
 import {
   Sparkles,
   GitBranch,
@@ -12,6 +12,8 @@ import {
   RefreshCw,
   Lock,
   Zap,
+  FolderGit2,
+  Cpu,
 } from 'lucide-react';
 import { GithubIcon } from '@/components/GithubIcon';
 
@@ -25,6 +27,7 @@ interface HeaderProps {
   isRepoModalOpen: boolean;
   setIsRepoModalOpen: (open: boolean) => void;
   selectedModel?: string;
+  provider?: AIProvider;
   onOpenModelSelector?: () => void;
 }
 
@@ -37,7 +40,8 @@ export function Header({
   githubToken,
   isRepoModalOpen,
   setIsRepoModalOpen,
-  selectedModel = 'gemini-2.5-flash',
+  selectedModel = 'gemini-3.8-flash',
+  provider = 'antigravity',
   onOpenModelSelector,
 }: HeaderProps) {
   const [repos, setRepos] = useState<GitHubRepoItem[]>([]);
@@ -143,7 +147,7 @@ export function Header({
           </div>
         </div>
 
-        {/* Center: Active Repo & Branch Chip (Locked if no keys) */}
+        {/* Center: Active Repo & Branch Chip */}
         <button
           onClick={openRepoSelector}
           className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs transition-all max-w-[180px] sm:max-w-xs truncate ${
@@ -154,19 +158,35 @@ export function Header({
           title={
             hasKeys
               ? 'Cambia repository o branch'
-              : 'Configura prima le tue credenziali nelle impostazioni per sbloccare i repository'
+              : 'Configura prima le tue credenziali nelle impostazioni'
           }
         >
           {hasKeys ? (
-            <>
-              <GithubIcon size={13} className="text-neutral-400 shrink-0" />
-              <span className="truncate font-mono font-medium text-[11px]">
-                {repoContext.owner ? `${repoContext.owner}/${repoContext.repo}` : 'Seleziona Repo'}
-              </span>
-              <span className="text-neutral-600">/</span>
-              <span className="text-cyan-400 font-mono text-[10px] truncate">{repoContext.branch}</span>
-              <ChevronDown size={12} className="text-neutral-500 shrink-0" />
-            </>
+            repoContext.owner === 'local' ? (
+              <>
+                <FolderGit2 size={13} className="text-cyan-400 shrink-0" />
+                <span className="truncate font-mono font-medium text-[11px]">
+                  {repoContext.repo || 'workspace'} (Locale)
+                </span>
+                <ChevronDown size={12} className="text-neutral-500 shrink-0" />
+              </>
+            ) : repoContext.owner ? (
+              <>
+                <GithubIcon size={13} className="text-neutral-400 shrink-0" />
+                <span className="truncate font-mono font-medium text-[11px]">
+                  {repoContext.owner}/{repoContext.repo}
+                </span>
+                <span className="text-neutral-600">/</span>
+                <span className="text-cyan-400 font-mono text-[10px] truncate">{repoContext.branch}</span>
+                <ChevronDown size={12} className="text-neutral-500 shrink-0" />
+              </>
+            ) : (
+              <>
+                <FolderGit2 size={13} className="text-cyan-400 shrink-0" />
+                <span className="truncate font-mono font-medium text-[11px]">Workspace Locale</span>
+                <ChevronDown size={12} className="text-neutral-500 shrink-0" />
+              </>
+            )
           ) : (
             <>
               <Lock size={12} className="text-amber-400 shrink-0 animate-pulse" />
@@ -177,11 +197,21 @@ export function Header({
 
         {/* Actions: Model Switcher, New Chat & Settings */}
         <div className="flex items-center gap-1">
+          {provider === 'antigravity' && (
+            <span
+              className="hidden md:flex items-center gap-1 px-2 py-1 rounded-xl bg-cyan-950/40 border border-cyan-800/50 text-[10px] text-cyan-300 font-mono font-medium select-none"
+              title="Motore Antigravity CLI nativo attivo (zero limiti API key)"
+            >
+              <Cpu size={11} className="text-cyan-400" />
+              <span>Antigravity</span>
+            </span>
+          )}
+
           {onOpenModelSelector && (
             <button
               onClick={onOpenModelSelector}
               className="p-1.5 px-2 rounded-xl bg-neutral-800/80 hover:bg-neutral-800 text-cyan-300 border border-neutral-700/60 text-[11px] font-mono flex items-center gap-1 transition-colors"
-              title="Cambia modello Google Gemini"
+              title="Cambia modello"
             >
               <Zap size={12} className="text-amber-400" />
               <span className="hidden sm:inline">{selectedModel.replace('gemini-', '')}</span>
@@ -228,6 +258,29 @@ export function Header({
             </div>
 
             <div className="p-5 space-y-4 overflow-y-auto flex-1 text-xs">
+              {/* Opzione 1: Workspace Locale PC */}
+              <div className="p-3 bg-neutral-950 border border-neutral-800 rounded-xl flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-lg bg-cyan-950/50 text-cyan-400 border border-cyan-800/40">
+                    <FolderGit2 size={16} />
+                  </div>
+                  <div>
+                    <span className="font-semibold text-neutral-200 block text-xs">Workspace Locale (PC)</span>
+                    <span className="text-[10px] text-neutral-500">Lavora direttamente sui file del progetto locale</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onRepoChange({ owner: 'local', repo: 'giantigravity', branch: 'main' });
+                    setIsRepoModalOpen(false);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-neutral-950 font-semibold text-xs transition-colors shadow-sm"
+                >
+                  Usa Locale
+                </button>
+              </div>
+
               {/* Remote List of Repos */}
               {githubToken && (
                 <div className="space-y-2">

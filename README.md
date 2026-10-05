@@ -8,11 +8,15 @@ Ti permette di collegarti a qualsiasi tuo repository GitHub e programmare ovunqu
 
 ## ✨ Funzionalità Principali
 
+* **Doppia Modalità AI**:
+  * 🚀 **Antigravity CLI (Nativo Windows)**: **Zero limiti di quota, nessuna API Key richiesta!** Usa direttamente la tua sessione autenticata di Antigravity per Windows (Gemini 3.8 Flash, Gemini 3.1 Pro, Claude, ecc.).
+  * 🔑 **Google AI Studio (API Key)**: Modalità classica per deploy cloud remoti (es. Vercel) inserendo la propria chiave personale.
 * **Agente AI Autonomo (Loop Agentico)**:
-  * Ispezione della struttura del progetto (`list_directory`)
+  * Ispezione della struttura del progetto (`list_directory`, `list_dir`)
   * Lettura e comprensione dei file sorgente (`view_file`)
-  * Ricerca nel codice (`search_code`)
-  * Modifica e creazione file con commit Git automatici (`edit_file`)
+  * Ricerca nel codice (`search_code`, `grep_search`)
+  * Modifica e creazione file con anteprima Diff in tempo reale (`edit_file`, `replace_file_content`, `write_to_file`)
+  * Esecuzione comandi terminale (`run_command`)
   * Creazione branch e Pull Request (`create_branch`, `create_pull_request`)
 * **Visualizzazione Diff in stile Antigravity**:
   * Anteprima riga per riga di cosa è stato aggiunto (+ verde) ed eliminato (- rosso).
@@ -20,9 +24,9 @@ Ti permette di collegarti a qualsiasi tuo repository GitHub e programmare ovunqu
   * Layout ottimizzato con `100dvh` e supporto per safe-area su iOS/Android.
   * Installabile come app nativa sulla home screen del telefono.
   * Supporto all'input vocale (Web Speech API) per dettare prompt e comandi a voce.
-* **Sicurezza & Privacy 100% Client-Side**:
-  * Nessuna chiave hardcoded sul server.
-  * Ciascun utente configura e salva le proprie chiavi solo nel browser del proprio dispositivo.
+* **Sicurezza & Privacy**:
+  * In modalità Antigravity, tutto viene eseguito sul tuo PC locale senza intermediari terzi.
+  * In modalità API, nessuna chiave viene salvata sul server ma solo nel browser del dispositivo.
 
 ---
 

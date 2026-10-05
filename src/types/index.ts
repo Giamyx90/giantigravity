@@ -18,11 +18,14 @@ export interface AgentStep {
   timestamp: number;
 }
 
+export type AIProvider = 'antigravity' | 'gemini_api';
+
 export interface ChatMessage {
   id: string;
   role: MessageRole;
   content: string;
   steps?: AgentStep[];
+  conversationId?: string;
   timestamp: number;
 }
 
@@ -33,8 +36,9 @@ export interface RepoContext {
 }
 
 export interface UserSettings {
-  githubToken: string;
-  geminiApiKey: string;
+  provider?: AIProvider;
+  githubToken?: string;
+  geminiApiKey?: string;
   selectedModel: string;
 }
 
