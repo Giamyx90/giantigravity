@@ -8,7 +8,7 @@ import {
   createPullRequest,
 } from '@/lib/github';
 import { computeDiff } from '@/lib/diff';
-import { AgentStep, RepoContext } from '@/types';
+import { AgentStep, RepoContext, TokenUsage } from '@/types';
 
 export const agentToolDeclarations = [
   {
@@ -144,7 +144,7 @@ export async function runAgent({
   history = [],
   onStepUpdate,
   onChunk,
-}: AgentRunParams): Promise<{ reply: string; steps: AgentStep[] }> {
+}: AgentRunParams): Promise<{ reply: string; steps: AgentStep[]; usage: TokenUsage }> {
   const cleanAccessToken = googleAccessToken?.trim();
   const cleanApiKey = apiKey?.trim();
 
@@ -207,6 +207,9 @@ Rispondi in lingua italiana.`;
 
   const steps: AgentStep[] = [];
   let finalAnswer = '';
+  let totalPromptTokens = 0;
+  let totalCompletionTokens = 0;
+  let totalCachedTokens = 0;
   const maxLoops = 10;
   let loopCount = 0;
   let activeModel = modelName;
@@ -272,6 +275,16 @@ Rispondi in lingua italiana.`;
 
         throw err;
       }
+    }
+
+    const usageMeta = (response as any)?.usageMetadata;
+    if (usageMeta) {
+      totalPromptTokens += Number(usageMeta.promptTokenCount) || 0;
+      totalCompletionTokens += Number(usageMeta.candidatesTokenCount) || 0;
+      totalCachedTokens += Number(usageMeta.cachedContentTokenCount) || 0;
+    } else {
+      totalPromptTokens += Math.max(1, Math.ceil(JSON.stringify(contents).length / 3.8));
+      totalCompletionTokens += Math.max(1, Math.ceil((response?.text?.length || 50) / 3.8));
     }
 
     const candidate = response.candidates?.[0];
@@ -442,5 +455,13 @@ Rispondi in lingua italiana.`;
     });
   }
 
-  return { reply: finalAnswer, steps };
+  const totalTokens = totalPromptTokens + totalCompletionTokens;
+  const usage: TokenUsage = {
+    promptTokens: totalPromptTokens,
+    completionTokens: totalCompletionTokens,
+    totalTokens,
+    cachedTokens: totalCachedTokens,
+  };
+
+  return { reply: finalAnswer, steps, usage };
 }

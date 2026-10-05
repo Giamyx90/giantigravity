@@ -20,6 +20,24 @@ export interface AgentStep {
 
 export type AIProvider = 'antigravity' | 'google_oauth' | 'gemini_api';
 
+export interface TokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  cachedTokens?: number;
+}
+
+export interface TokenStats {
+  lifetimeTotal: number;
+  lifetimePrompt: number;
+  lifetimeCompletion: number;
+  totalRequests: number;
+  dailyUsage: Record<string, number>;
+  modelUsage: Record<string, number>;
+  budgetLimit?: number; // soglia limite in token impostata dall'utente (0 = disattivata)
+  alertThresholdPct?: number; // percentuale di allerta, default 80
+}
+
 export interface ChatMessage {
   id: string;
   role: MessageRole;
@@ -27,6 +45,8 @@ export interface ChatMessage {
   steps?: AgentStep[];
   conversationId?: string;
   timestamp: number;
+  usage?: TokenUsage;
+  model?: string;
 }
 
 export interface ChatSession {
@@ -37,6 +57,7 @@ export interface ChatSession {
   repoContext: RepoContext;
   conversationId?: string;
   messages: ChatMessage[];
+  totalTokens?: number;
 }
 
 export interface RepoContext {

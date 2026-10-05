@@ -14,8 +14,10 @@ import {
   Calendar,
   CheckCircle2,
   AlertTriangle,
+  Zap,
 } from 'lucide-react';
 import { GithubIcon } from '@/components/GithubIcon';
+import { formatTokenCount } from '@/lib/token-tracker';
 
 interface HistoryDrawerProps {
   isOpen: boolean;
@@ -199,6 +201,16 @@ export function HistoryDrawer({
 
                       <span className="text-neutral-600">●</span>
                       <span>{session.messages?.length || 0} msg</span>
+
+                      {Boolean(session.totalTokens && session.totalTokens > 0) && (
+                        <>
+                          <span className="text-neutral-600">●</span>
+                          <span className="flex items-center gap-0.5 text-amber-400">
+                            <Zap size={9} />
+                            {formatTokenCount(session.totalTokens || 0)}
+                          </span>
+                        </>
+                      )}
 
                       <span className="text-neutral-600">●</span>
                       <span className="text-neutral-500 font-sans">

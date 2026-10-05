@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { GithubIcon } from '@/components/GithubIcon';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
+import { formatTokenCount } from '@/lib/token-tracker';
 
 interface HeaderProps {
   repoContext: RepoContext;
@@ -34,6 +35,10 @@ interface HeaderProps {
   isAgyAvailable?: boolean;
   onOpenHistory?: () => void;
   historyCount?: number;
+  onOpenTokenModal?: () => void;
+  sessionTokens?: number;
+  isOverBudget?: boolean;
+  isNearBudget?: boolean;
 }
 
 export function Header({
@@ -49,6 +54,10 @@ export function Header({
   isAgyAvailable,
   onOpenHistory,
   historyCount = 0,
+  onOpenTokenModal,
+  sessionTokens = 0,
+  isOverBudget = false,
+  isNearBudget = false,
 }: HeaderProps) {
   const [repos, setRepos] = useState<GitHubRepoItem[]>([]);
   const [branches, setBranches] = useState<string[]>([]);
@@ -201,6 +210,23 @@ export function Header({
               <Zap size={12} className="text-amber-400" />
               <span className="hidden sm:inline">{selectedModel.replace('gemini-', '')}</span>
               <ChevronDown size={11} className="text-neutral-400" />
+            </button>
+          )}
+
+          {onOpenTokenModal && (
+            <button
+              onClick={onOpenTokenModal}
+              className={`p-1.5 px-2 rounded-xl text-[11px] font-mono flex items-center gap-1 transition-all ${
+                isOverBudget
+                  ? 'bg-red-950/80 text-red-300 border border-red-700/80 animate-pulse'
+                  : isNearBudget
+                  ? 'bg-amber-950/80 text-amber-300 border border-amber-700/80'
+                  : 'bg-neutral-800/80 hover:bg-neutral-800 text-amber-300 border border-neutral-700/60'
+              }`}
+              title="Controllo e consumo Token"
+            >
+              <Zap size={12} className={isOverBudget ? 'text-red-400' : isNearBudget ? 'text-amber-400' : 'text-amber-400'} />
+              <span>{formatTokenCount(sessionTokens)}</span>
             </button>
           )}
 

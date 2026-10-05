@@ -2,7 +2,7 @@ import { spawnSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import { AgentStep, DiffChunk } from '@/types';
+import { AgentStep, DiffChunk, TokenUsage } from '@/types';
 import { computeDiff } from '@/lib/diff';
 
 export interface AgyExecutableInfo {
@@ -159,6 +159,22 @@ export function generateAutoSummary(steps: AgentStep[]): string {
   return summary;
 }
 
+function computeAgyUsage(promptText: string, stepsList: AgentStep[], replyText: string): TokenUsage {
+  const promptTokens = Math.max(1, Math.ceil((promptText.length + 1800) / 3.8));
+  let outputChars = (replyText || '').length;
+  for (const s of stepsList) {
+    if (s.args) outputChars += JSON.stringify(s.args).length;
+    if (s.result) outputChars += typeof s.result === 'string' ? s.result.length : JSON.stringify(s.result).length;
+    if (s.diff) outputChars += JSON.stringify(s.diff).length;
+  }
+  const completionTokens = Math.max(1, Math.ceil(outputChars / 3.8));
+  return {
+    promptTokens,
+    completionTokens,
+    totalTokens: promptTokens + completionTokens,
+  };
+}
+
 export interface RunAgyParams {
   prompt: string;
   modelName?: string;
@@ -177,7 +193,7 @@ export async function runAgyAgent({
   onStepUpdate,
   onChunk,
   onInit,
-}: RunAgyParams): Promise<{ reply: string; steps: AgentStep[]; conversationId?: string }> {
+}: RunAgyParams): Promise<{ reply: string; steps: AgentStep[]; conversationId?: string; usage: TokenUsage }> {
   const agy = getAgyExecutable();
 
   if (!agy) {
@@ -355,10 +371,13 @@ export async function runAgyAgent({
 
                   onChunk(finalReply);
                   clearInterval(interval);
+                  const stepsArray = Array.from(stepsMap.values());
+                  const usage = computeAgyUsage(prompt, stepsArray, finalReply);
                   resolve({
                     reply: finalReply,
-                    steps: Array.from(stepsMap.values()),
+                    steps: stepsArray,
                     conversationId: activeConversationId,
+                    usage,
                   });
                   return;
                 }
@@ -391,17 +410,21 @@ export async function runAgyAgent({
           ) {
             finalReply = `${finalReply}\n\n---\n${generateAutoSummary(steps)}`;
           }
+          const usage = computeAgyUsage(prompt, steps, finalReply);
           resolve({
             reply: finalReply,
             steps,
             conversationId: activeConversationId,
+            usage,
           });
         } else {
           const autoSummary = generateAutoSummary(steps);
+          const usage = computeAgyUsage(prompt, steps, autoSummary);
           resolve({
             reply: autoSummary,
             steps,
             conversationId: activeConversationId,
+            usage,
           });
         }
       }

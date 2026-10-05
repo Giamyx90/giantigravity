@@ -80,6 +80,8 @@ export async function POST(req: NextRequest) {
               reply: result.reply,
               steps: result.steps,
               conversationId: result.conversationId,
+              usage: result.usage,
+              model: modelName,
             });
           } catch (err: any) {
             console.error('Antigravity CLI runner error:', err);
@@ -161,7 +163,13 @@ export async function POST(req: NextRequest) {
             },
           });
 
-          sendEvent({ type: 'done', reply: result.reply, steps: result.steps });
+          sendEvent({
+            type: 'done',
+            reply: result.reply,
+            steps: result.steps,
+            usage: result.usage,
+            model: modelName,
+          });
         } catch (err: any) {
           console.error('Agent error:', err);
           // Mostra sempre l'errore raw esatto ricevuto da Google/Gemini senza nasconderlo o sostituirlo

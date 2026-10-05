@@ -8,6 +8,14 @@ import { ChatInput } from '@/components/ChatInput';
 import { SettingsModal } from '@/components/SettingsModal';
 import { ModelSelectorModal } from '@/components/ModelSelectorModal';
 import { HistoryDrawer } from '@/components/HistoryDrawer';
+import { TokenUsageModal } from '@/components/TokenUsageModal';
+import { TokenStats } from '@/types';
+import {
+  calculateSessionTokens,
+  getTokenStats,
+  recordTokenUsage,
+  formatTokenCount,
+} from '@/lib/token-tracker';
 import {
   getStoredSessions,
   saveSession,
@@ -17,7 +25,7 @@ import {
   setActiveSessionId,
   generateSessionTitle,
 } from '@/lib/history';
-import { Sparkles, GitBranch, Code2, Cpu, Smartphone, Lock, CheckCircle2, History } from 'lucide-react';
+import { Sparkles, GitBranch, Code2, Cpu, Smartphone, Lock, CheckCircle2, History, Zap } from 'lucide-react';
 import { GithubIcon } from '@/components/GithubIcon';
 import { useSession, signIn } from 'next-auth/react';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
@@ -30,7 +38,18 @@ export default function Home() {
   const [isRepoModalOpen, setIsRepoModalOpen] = useState(false);
   const [isModelModalOpen, setIsModelModalOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isTokenModalOpen, setIsTokenModalOpen] = useState(false);
   const [isAgyAvailable, setIsAgyAvailable] = useState<boolean | null>(null);
+  const [tokenStats, setTokenStats] = useState<TokenStats>({
+    lifetimeTotal: 0,
+    lifetimePrompt: 0,
+    lifetimeCompletion: 0,
+    totalRequests: 0,
+    dailyUsage: {},
+    modelUsage: {},
+    budgetLimit: 250000,
+    alertThresholdPct: 80,
+  });
 
   // History sessions list & active session
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -101,6 +120,9 @@ export default function Home() {
           }
         }
       }
+
+      // Carica statistiche e soglia di controllo token
+      setTokenStats(getTokenStats());
     } catch (e) {
       console.error(e);
     }
@@ -326,6 +348,10 @@ export default function Home() {
                   latestConversationId = event.conversationId;
                   setConversationId(event.conversationId);
                 }
+                if (event.usage) {
+                  const updatedStats = recordTokenUsage(event.usage, event.model || settings.selectedModel);
+                  setTokenStats(updatedStats);
+                }
                 currentMessages = currentMessages.map((msg) =>
                   msg.id === assistantId
                     ? {
@@ -333,6 +359,8 @@ export default function Home() {
                         content: event.reply || msg.content,
                         steps: event.steps || msg.steps,
                         conversationId: event.conversationId,
+                        usage: event.usage || msg.usage,
+                        model: event.model || settings.selectedModel,
                       }
                     : msg
                 );
@@ -366,11 +394,15 @@ export default function Home() {
       setMessages(currentMessages);
     } finally {
       setIsLoading(false);
-      // Salva e sincronizza la sessione nello storico persistente
+      // Salva e sincronizza la sessione nello storico persistente con conteggio token
       try {
         const stored = getStoredSessions();
         const existing = stored.find((s) => s.id === targetSessionId);
         const sessionTitle = existing?.title || generateSessionTitle(text);
+        const totalSessionTokens = currentMessages.reduce(
+          (acc, m) => acc + (m.usage?.totalTokens || 0),
+          0
+        );
         const sessionToSave: ChatSession = {
           id: targetSessionId,
           title: sessionTitle,
@@ -379,6 +411,7 @@ export default function Home() {
           repoContext: activeRepo,
           conversationId: latestConversationId,
           messages: currentMessages,
+          totalTokens: totalSessionTokens,
         };
         saveSession(sessionToSave);
         setSessions(getStoredSessions());
@@ -387,6 +420,14 @@ export default function Home() {
       }
     }
   };
+
+  const sessionTokens = calculateSessionTokens(messages);
+  const budgetLimit = tokenStats.budgetLimit || 0;
+  const isOverBudget = budgetLimit > 0 && tokenStats.lifetimeTotal >= budgetLimit;
+  const isNearBudget =
+    budgetLimit > 0 &&
+    !isOverBudget &&
+    (tokenStats.lifetimeTotal / budgetLimit) * 100 >= (tokenStats.alertThresholdPct || 80);
 
   return (
     <div className="flex flex-col h-[100dvh] max-h-[100dvh] w-full bg-neutral-950 text-neutral-100 font-sans overflow-hidden">
@@ -406,6 +447,10 @@ export default function Home() {
         provider={settings.provider || 'antigravity'}
         onOpenModelSelector={() => setIsModelModalOpen(true)}
         isAgyAvailable={Boolean(isAgyAvailable)}
+        onOpenTokenModal={() => setIsTokenModalOpen(true)}
+        sessionTokens={sessionTokens.totalTokens}
+        isOverBudget={isOverBudget}
+        isNearBudget={isNearBudget}
       />
 
       {/* Main Chat Messages View */}
@@ -450,6 +495,34 @@ export default function Home() {
                 </span>
               </div>
             )}
+
+            {/* Quick Token Control Card */}
+            <div
+              onClick={() => setIsTokenModalOpen(true)}
+              className="cursor-pointer p-3 bg-neutral-900/90 border border-neutral-800 hover:border-amber-500/50 rounded-2xl text-left flex items-center justify-between text-xs transition-all shadow-md group"
+            >
+              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                <div className="p-2 rounded-xl bg-amber-950/60 text-amber-400 border border-amber-800/40 shrink-0 group-hover:scale-105 transition-transform">
+                  <Zap size={16} />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-semibold text-white block text-xs">Controllo Consumi Token</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-950 text-amber-400 border border-amber-800/60 font-mono font-medium">
+                      {formatTokenCount(tokenStats.lifetimeTotal)} totali
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-neutral-400 truncate block mt-0.5">
+                    {budgetLimit > 0
+                      ? `Budget: ${formatTokenCount(tokenStats.lifetimeTotal)} / ${formatTokenCount(budgetLimit)} (${Math.round((tokenStats.lifetimeTotal / budgetLimit) * 100)}%)`
+                      : 'Nessun limite impostato (tocca per configurare)'}
+                  </span>
+                </div>
+              </div>
+              <span className="text-[11px] text-amber-400 font-medium group-hover:translate-x-0.5 transition-transform shrink-0">
+                Gestisci ➔
+              </span>
+            </div>
 
             {/* Google Sign-in Card */}
             <GoogleSignInButton
@@ -651,6 +724,15 @@ export default function Home() {
         onNewChat={handleNewChat}
         onDeleteSession={handleDeleteSession}
         onClearAll={handleClearAllSessions}
+      />
+
+      {/* Token Usage & Spending Control Modal */}
+      <TokenUsageModal
+        isOpen={isTokenModalOpen}
+        onClose={() => setIsTokenModalOpen(false)}
+        sessionUsage={sessionTokens}
+        activeModel={settings.selectedModel}
+        onStatsChanged={() => setTokenStats(getTokenStats())}
       />
     </div>
   );

@@ -5,7 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ChatMessage } from '@/types';
 import { ToolStepCard } from './ToolStepCard';
-import { Copy, Check, Sparkles, User } from 'lucide-react';
+import { Copy, Check, Sparkles, User, Zap } from 'lucide-react';
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -76,8 +76,28 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                     },
                   }}
                 >
-                  {message.content}
                 </ReactMarkdown>
+              </div>
+            )}
+
+            {!isUser && message.usage && (
+              <div className="mt-2.5 pt-2 border-t border-neutral-800/80 flex items-center justify-between text-[11px] text-neutral-400 font-mono">
+                <span className="flex items-center gap-1 text-cyan-400">
+                  <Zap size={11} className="text-amber-400" />
+                  <span className="font-semibold text-neutral-200">
+                    {message.usage.totalTokens.toLocaleString('it-IT')}
+                  </span>
+                  <span className="text-[10px] text-neutral-400">token</span>
+                </span>
+                <span className="text-[10px] text-neutral-500 hidden sm:inline">
+                  in: {message.usage.promptTokens.toLocaleString('it-IT')} · out:{' '}
+                  {message.usage.completionTokens.toLocaleString('it-IT')}
+                </span>
+                {message.model && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 font-sans">
+                    {message.model.replace('gemini-', '')}
+                  </span>
+                )}
               </div>
             )}
           </div>
