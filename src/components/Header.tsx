@@ -16,6 +16,7 @@ import {
   Cpu,
 } from 'lucide-react';
 import { GithubIcon } from '@/components/GithubIcon';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 
 interface HeaderProps {
   repoContext: RepoContext;
@@ -237,6 +238,8 @@ export function Header({
               <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-400 animate-ping" />
             )}
           </button>
+
+          <GoogleSignInButton variant="compact" />
         </div>
       </header>
 

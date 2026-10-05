@@ -18,7 +18,7 @@ export interface AgentStep {
   timestamp: number;
 }
 
-export type AIProvider = 'antigravity' | 'gemini_api';
+export type AIProvider = 'antigravity' | 'google_oauth' | 'gemini_api';
 
 export interface ChatMessage {
   id: string;

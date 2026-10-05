@@ -121,7 +121,8 @@ export const agentToolDeclarations = [
 ];
 
 export interface AgentRunParams {
-  apiKey: string;
+  apiKey?: string;
+  googleAccessToken?: string;
   githubToken: string;
   modelName?: string;
   repoContext: RepoContext;
@@ -133,6 +134,7 @@ export interface AgentRunParams {
 
 export async function runAgent({
   apiKey,
+  googleAccessToken,
   githubToken,
   modelName = 'gemini-2.5-flash',
   repoContext,
@@ -141,7 +143,16 @@ export async function runAgent({
   onStepUpdate,
   onChunk,
 }: AgentRunParams): Promise<{ reply: string; steps: AgentStep[] }> {
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({
+    apiKey: apiKey || 'oauth-token',
+    httpOptions: googleAccessToken
+      ? {
+          headers: {
+            Authorization: `Bearer ${googleAccessToken}`,
+          },
+        }
+      : undefined,
+  });
 
   const systemInstruction = `Sei Giantigravity, un assistente di programmazione agentico avanzato alimentato da Google Gemini.
 Lavori direttamente sul repository GitHub: "${repoContext.owner}/${repoContext.repo}" (branch attivo: "${repoContext.branch}").

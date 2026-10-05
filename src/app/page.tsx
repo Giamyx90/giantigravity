@@ -9,8 +9,11 @@ import { SettingsModal } from '@/components/SettingsModal';
 import { ModelSelectorModal } from '@/components/ModelSelectorModal';
 import { Sparkles, GitBranch, Code2, Cpu, Smartphone, Lock, CheckCircle2 } from 'lucide-react';
 import { GithubIcon } from '@/components/GithubIcon';
+import { useSession } from 'next-auth/react';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 
 export default function Home() {
+  const { data: session } = useSession();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -123,7 +126,8 @@ export default function Home() {
   }, [messages, isLoading]);
 
   const isAntigravity = (settings.provider || 'antigravity') === 'antigravity';
-  const hasConfig = isAntigravity ? true : Boolean(settings.geminiApiKey);
+  const isGoogleLoggedIn = Boolean(session?.user);
+  const hasConfig = isAntigravity || isGoogleLoggedIn ? true : Boolean(settings.geminiApiKey);
 
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
@@ -166,6 +170,7 @@ export default function Home() {
           prompt: text,
           repoContext: activeRepo,
           conversationId,
+          googleAccessToken: (session as any)?.accessToken,
           settings,
         }),
       });
@@ -310,6 +315,9 @@ export default function Home() {
                 L&apos;IDE agentico per sviluppare sul tuo repo GitHub dallo smartphone con Google Gemini
               </p>
             </div>
+
+            {/* Google Sign-in Card */}
+            <GoogleSignInButton variant={session?.user ? 'full' : 'card'} />
 
             {/* Step-by-Step Onboarding Cards */}
             {!hasConfig ? (

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { UserSettings, AVAILABLE_MODELS, AIProvider } from '@/types';
 import { X, Key, Sparkles, Check, ExternalLink, ShieldCheck, Trash2, Cpu, CheckCircle2, AlertCircle } from 'lucide-react';
 import { GithubIcon } from '@/components/GithubIcon';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -87,12 +88,41 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
 
         {/* Form Body */}
         <form onSubmit={handleSave} className="p-5 space-y-4 overflow-y-auto flex-1 text-xs">
+          {/* Autenticazione con Google Account */}
+          <div className="space-y-2 p-3.5 bg-neutral-950 border border-neutral-800 rounded-2xl shadow-sm">
+            <span className="font-semibold text-neutral-200 block text-xs">
+              Account Google (Accesso Rapido)
+            </span>
+            <GoogleSignInButton variant="full" />
+            <p className="text-[10px] text-neutral-500">
+              Accedi con il tuo account Google per programmare da smartphone senza bisogno di inserire chiavi API.
+            </p>
+          </div>
+
           {/* Modalità / Engine Selector */}
           <div className="space-y-2">
             <label className="text-neutral-300 font-medium block">
-              Motore di Esecuzione AI
+              Modalità di Esecuzione AI
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setProvider('google_oauth')}
+                className={`p-3 rounded-xl border text-left flex flex-col gap-1 transition-all ${
+                  provider === 'google_oauth'
+                    ? 'border-blue-500 bg-blue-950/30 text-white'
+                    : 'border-neutral-800 bg-neutral-950/60 text-neutral-400 hover:border-neutral-700'
+                }`}
+              >
+                <div className="flex items-center gap-1.5 font-semibold text-xs text-blue-300">
+                  <Sparkles size={14} />
+                  <span>Google OAuth</span>
+                </div>
+                <span className="text-[10px] text-neutral-400 leading-tight">
+                  Accedi con Google dal telefono (Ideale per Vercel).
+                </span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setProvider('antigravity')}
@@ -107,7 +137,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
                   <span>Antigravity CLI</span>
                 </div>
                 <span className="text-[10px] text-neutral-400 leading-tight">
-                  Zero limiti, nessuna API Key. Usa la tua sessione Antigravity.
+                  Sessione locale del PC (se presente).
                 </span>
                 <div className="mt-1 flex items-center gap-1 text-[9px]">
                   {antigravityStatus?.available ? (
@@ -115,7 +145,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
                       <CheckCircle2 size={10} /> Connesso al PC
                     </span>
                   ) : (
-                    <span className="text-neutral-500">Rilevamento in corso...</span>
+                    <span className="text-neutral-500">Non disponibile</span>
                   )}
                 </div>
               </button>
@@ -125,20 +155,17 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
                 onClick={() => setProvider('gemini_api')}
                 className={`p-3 rounded-xl border text-left flex flex-col gap-1 transition-all ${
                   provider === 'gemini_api'
-                    ? 'border-cyan-500 bg-cyan-950/30 text-white'
+                    ? 'border-amber-500 bg-amber-950/30 text-white'
                     : 'border-neutral-800 bg-neutral-950/60 text-neutral-400 hover:border-neutral-700'
                 }`}
               >
                 <div className="flex items-center gap-1.5 font-semibold text-xs text-amber-300">
                   <Key size={14} />
-                  <span>Google AI Studio</span>
+                  <span>AI Studio Key</span>
                 </div>
                 <span className="text-[10px] text-neutral-400 leading-tight">
-                  Usa API Key personale (ideale per server cloud come Vercel).
+                  Inserisci chiave API manuale.
                 </span>
-                <div className="mt-1 text-[9px] text-neutral-500">
-                  Quote AI Studio
-                </div>
               </button>
             </div>
           </div>
