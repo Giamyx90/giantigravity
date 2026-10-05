@@ -150,7 +150,9 @@ export async function runAgent({
     apiKey: cleanApiKey || 'placeholder-key',
   });
 
-  if (cleanAccessToken) {
+  // Se è presente una API Key, diamo sempre priorità alla chiave perché ha accesso completo a Gemini
+  // Usa l'Access Token OAuth solo se NON è stata impostata una API Key
+  if (!cleanApiKey && cleanAccessToken) {
     // Rimuove l'header x-goog-api-key e invia esclusivamente Authorization: Bearer <token>
     (ai as any).apiClient.clientOptions.auth.addAuthHeaders = async (headers: Headers) => {
       headers.set('Authorization', `Bearer ${cleanAccessToken}`);

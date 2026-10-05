@@ -133,7 +133,9 @@ export async function POST(req: NextRequest) {
         } catch (err: any) {
           console.error('Agent error:', err);
           let errorMsg = err.message || 'Errore durante l\'esecuzione dell\'agente.';
-          if (errorMsg.includes('invalid authentication credentials')) {
+          if (errorMsg.includes('ACCESS_TOKEN_SCOPE_INSUFFICIENT') || errorMsg.includes('insufficient authentication scopes')) {
+            errorMsg = 'Il tuo account Google è collegato, ma mancano i permessi speciali per Gemini (ACCESS_TOKEN_SCOPE_INSUFFICIENT). Inserisci la tua API Key di Google AI Studio nelle impostazioni per chattare subito senza blocchi!';
+          } else if (errorMsg.includes('invalid authentication credentials')) {
             errorMsg = 'Credenziali non valide o scadute (HTTP 401). Se usi un Access Token (ya29...), ricorda che dura 60 minuti e deve avere lo scope "generative-language". Per evitare scadenze continue, puoi usare la tua API Key di Google AI Studio nelle impostazioni.';
           }
           sendEvent({
