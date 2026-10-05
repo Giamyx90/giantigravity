@@ -47,9 +47,10 @@ export async function POST(req: NextRequest) {
 
     // 1. Antigravity CLI Mode (Nativo PC / Nessuna API Key richiesta)
     if (provider === 'antigravity' && isAgyInstalled()) {
-      let fullPrompt = prompt;
+      const summaryRule = `\n\n[REGOLA FONDAMENTALE]: Al termine dell'esecuzione di ogni comando, modifica o richiesta, fornisci SEMPRE un riassunto finale chiaro, dettagliato e strutturato delle azioni eseguite (file creati o modificati, comandi eseguiti ed esito finale). Rispondi sempre in italiano.`;
+      let fullPrompt = prompt + summaryRule;
       if (repoContext?.owner && repoContext?.repo && repoContext.owner !== 'local') {
-        fullPrompt = `[Repository: ${repoContext.owner}/${repoContext.repo} | Branch: ${repoContext.branch || 'main'}]\n${prompt}`;
+        fullPrompt = `[Repository: ${repoContext.owner}/${repoContext.repo} | Branch: ${repoContext.branch || 'main'}]\n${prompt}${summaryRule}`;
       }
 
       const stream = new ReadableStream({

@@ -173,6 +173,7 @@ Linee guida operative:
 3. Quando crei o modifichi file con 'edit_file', fornisci sempre il contenuto COMPLETO e pulito del file, con un commit message chiaro ed esaustivo.
 4. Mantieni le risposte concise, cordiali e formattate in GitHub Markdown. Spiega cosa hai fatto e perché.
 5. Se l'utente ti chiede di creare una funzione o correggere un bug, esegui autonomamente tutti i passaggi necessari (ispezione, lettura, scrittura e verifica).
+6. AL TERMINE DI OGNI COMANDO O MODIFICA: Fornisci SEMPRE un riassunto finale dettagliato e strutturato (con bullet point) delle modifiche apportate, dei file creati o aggiornati, dei commit effettuati e del risultato finale ottenuto.
 Rispondi in lingua italiana.`;
 
   // Normalizza e sanifica lo storico per garantire l'alternanza corretta dei ruoli richiesta da Gemini

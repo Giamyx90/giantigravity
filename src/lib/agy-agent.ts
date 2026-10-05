@@ -119,6 +119,46 @@ function makeSummary(toolName: string, args: Record<string, any>): string {
   return `Esecuzione: ${toolName}`;
 }
 
+export function generateAutoSummary(steps: AgentStep[]): string {
+  if (steps.length === 0) return 'Operazione completata con successo.';
+
+  const modifiedFiles = new Set<string>();
+  const readFiles = new Set<string>();
+  const executedCommands: string[] = [];
+
+  for (const step of steps) {
+    const tool = step.tool;
+    const args = step.args || {};
+    if (tool === 'write_to_file' || tool === 'replace_file_content' || tool === 'edit_file') {
+      const file = args.TargetFile || args.path || 'file';
+      modifiedFiles.add(path.basename(file));
+    } else if (tool === 'view_file') {
+      const file = args.AbsolutePath || args.path || 'file';
+      readFiles.add(path.basename(file));
+    } else if (tool === 'run_command') {
+      if (args.CommandLine) {
+        executedCommands.push(args.CommandLine);
+      }
+    }
+  }
+
+  let summary = '### 📋 Riepilogo Azioni Eseguite:\n';
+  if (modifiedFiles.size > 0) {
+    summary += `\n- **File modificati o creati (${modifiedFiles.size}):**\n` +
+      Array.from(modifiedFiles).map((f) => `  - \`${f}\``).join('\n');
+  }
+  if (readFiles.size > 0) {
+    summary += `\n- **File esaminati (${readFiles.size}):**\n` +
+      Array.from(readFiles).map((f) => `  - \`${f}\``).join('\n');
+  }
+  if (executedCommands.length > 0) {
+    summary += `\n- **Comandi eseguiti (${executedCommands.length}):**\n` +
+      executedCommands.map((c) => `  - \`${c}\``).join('\n');
+  }
+  summary += `\n\n*Totale passaggi eseguiti:* ${steps.length}`;
+  return summary;
+}
+
 export interface RunAgyParams {
   prompt: string;
   modelName?: string;
@@ -241,10 +281,13 @@ export async function runAgyAgent({
     let finalReply = '';
     let processedLineIndex = initialLineCount;
     let attempts = 0;
-    const maxAttempts = 360; // 360 * 250ms = 90 secondi max per turno
+    let idleAttempts = 0;
+    const maxIdleAttempts = 160; // 160 * 250ms = 40 secondi di inattività senza nuovi log
+    const maxTotalAttempts = 1200; // 5 minuti max per comandi molto lunghi
 
     const interval = setInterval(() => {
       attempts++;
+      idleAttempts++;
 
       if (fs.existsSync(transcriptPath)) {
         try {
@@ -252,6 +295,7 @@ export async function runAgyAgent({
           const lines = raw.trim().split('\n').filter(Boolean);
 
           while (processedLineIndex < lines.length) {
+            idleAttempts = 0; // Nuova attività o step rilevato: azzera il timer di inattività
             const lineStr = lines[processedLineIndex];
             processedLineIndex++;
 
@@ -298,6 +342,17 @@ export async function runAgyAgent({
                 // Risposta finale testuale del turno
                 if (parsed.content && (!parsed.tool_calls || parsed.tool_calls.length === 0)) {
                   finalReply = parsed.content;
+
+                  // Se sono stati eseguiti dei tool e la risposta non include già un riepilogo, appendiamo il riassunto strutturato
+                  if (
+                    stepsMap.size > 0 &&
+                    !finalReply.toLowerCase().includes('riepilogo') &&
+                    !finalReply.toLowerCase().includes('riassunto') &&
+                    !finalReply.toLowerCase().includes('file modificat')
+                  ) {
+                    finalReply = `${finalReply}\n\n---\n${generateAutoSummary(Array.from(stepsMap.values()))}`;
+                  }
+
                   onChunk(finalReply);
                   clearInterval(interval);
                   resolve({
@@ -325,18 +380,27 @@ export async function runAgyAgent({
         }
       }
 
-      if (attempts >= maxAttempts) {
+      if (idleAttempts >= maxIdleAttempts || attempts >= maxTotalAttempts) {
         clearInterval(interval);
+        const steps = Array.from(stepsMap.values());
         if (finalReply) {
+          if (
+            steps.length > 0 &&
+            !finalReply.toLowerCase().includes('riepilogo') &&
+            !finalReply.toLowerCase().includes('riassunto')
+          ) {
+            finalReply = `${finalReply}\n\n---\n${generateAutoSummary(steps)}`;
+          }
           resolve({
             reply: finalReply,
-            steps: Array.from(stepsMap.values()),
+            steps,
             conversationId: activeConversationId,
           });
         } else {
+          const autoSummary = generateAutoSummary(steps);
           resolve({
-            reply: 'Operazione completata con successo.',
-            steps: Array.from(stepsMap.values()),
+            reply: autoSummary,
+            steps,
             conversationId: activeConversationId,
           });
         }
