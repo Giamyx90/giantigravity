@@ -9,7 +9,7 @@ import { SettingsModal } from '@/components/SettingsModal';
 import { ModelSelectorModal } from '@/components/ModelSelectorModal';
 import { Sparkles, GitBranch, Code2, Cpu, Smartphone, Lock, CheckCircle2 } from 'lucide-react';
 import { GithubIcon } from '@/components/GithubIcon';
-import { useSession } from 'next-auth/react';
+import { useSession, signIn } from 'next-auth/react';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 
 export default function Home() {
@@ -135,12 +135,17 @@ export default function Home() {
 
   const isAntigravity = (settings.provider || 'antigravity') === 'antigravity';
   const isGoogleLoggedIn = Boolean(session?.user);
-  const hasConfig = isAntigravity || isGoogleLoggedIn || Boolean(settings.googleAccessToken) ? true : Boolean(settings.geminiApiKey);
+  const hasOAuthClientKeys = Boolean(settings.googleClientId && settings.googleClientSecret);
+  const hasConfig = isAntigravity || isGoogleLoggedIn || Boolean(settings.googleAccessToken) || Boolean(settings.geminiApiKey);
 
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
 
     if (!hasConfig) {
+      if (hasOAuthClientKeys && !isGoogleLoggedIn) {
+        signIn('google');
+        return;
+      }
       setIsSettingsOpen(true);
       return;
     }
@@ -331,7 +336,25 @@ export default function Home() {
             />
 
             {/* Step-by-Step Onboarding Cards */}
-            {!hasConfig ? (
+            {hasOAuthClientKeys && !isGoogleLoggedIn ? (
+              <div
+                onClick={() => signIn('google')}
+                className="cursor-pointer p-4 bg-gradient-to-r from-blue-950/40 to-cyan-950/30 border border-blue-700/60 rounded-2xl text-left hover:border-cyan-400 transition-all shadow-lg group"
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2 text-cyan-300 font-semibold text-xs">
+                    <Sparkles size={15} className="text-cyan-400" />
+                    <span>Client ID Google pronto! Ultimo tocco:</span>
+                  </div>
+                  <span className="text-[10px] text-cyan-300 font-bold px-2.5 py-0.5 rounded-full bg-cyan-950 border border-cyan-700 animate-pulse">
+                    Accedi ora ➔
+                  </span>
+                </div>
+                <p className="text-[11px] text-neutral-200 leading-relaxed">
+                  Hai inserito con successo il tuo Client ID e Secret. Tocca qui o sul pulsante <strong>&ldquo;Accedi con Google&rdquo;</strong> in alto per completare l&apos;autenticazione ed entrare nell&apos;IDE.
+                </p>
+              </div>
+            ) : !hasConfig ? (
               <div
                 onClick={() => setIsSettingsOpen(true)}
                 className="cursor-pointer p-4 bg-amber-950/20 border border-amber-800/50 rounded-2xl text-left hover:border-amber-500 transition-all shadow-md group"
@@ -447,7 +470,7 @@ export default function Home() {
         <ChatInput
           onSend={handleSendMessage}
           isLoading={isLoading}
-          disabled={!hasConfig || !repoContext.owner || !repoContext.repo}
+          disabled={isLoading}
           currentModel={settings.selectedModel}
           onOpenModelSelector={() => setIsModelModalOpen(true)}
         />

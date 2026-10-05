@@ -106,11 +106,6 @@ export function Header({
   };
 
   const openRepoSelector = () => {
-    // Selection is only possible after entering configurations!
-    if (!hasKeys || !githubToken) {
-      onOpenSettings();
-      return;
-    }
     setIsRepoModalOpen(true);
   };
 
@@ -285,7 +280,27 @@ export function Header({
               </div>
 
               {/* Remote List of Repos */}
-              {githubToken && (
+              {!githubToken ? (
+                <div className="p-3 bg-neutral-950 border border-neutral-800 rounded-xl space-y-2">
+                  <div className="flex items-center gap-1.5 text-neutral-300 font-semibold text-xs">
+                    <GithubIcon size={14} className="text-neutral-400" />
+                    <span>Visualizza i tuoi progetti GitHub personali</span>
+                  </div>
+                  <p className="text-[11px] text-neutral-400 leading-relaxed">
+                    Per mostrare automaticamente la lista dei tuoi repository dallo smartphone, inserisci il tuo <strong>GitHub Personal Access Token</strong> nelle impostazioni. Puoi anche digitare l&apos;owner e il repo manualmente qui sotto!
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsRepoModalOpen(false);
+                      onOpenSettings();
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-medium text-xs transition-colors"
+                  >
+                    ⚙️ Inserisci GitHub Token
+                  </button>
+                </div>
+              ) : (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-neutral-300">I tuoi repository GitHub:</span>
