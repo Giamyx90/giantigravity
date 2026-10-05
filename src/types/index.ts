@@ -39,6 +39,9 @@ export interface UserSettings {
   provider?: AIProvider;
   githubToken?: string;
   geminiApiKey?: string;
+  googleClientId?: string;
+  googleClientSecret?: string;
+  googleAccessToken?: string;
   selectedModel: string;
 }
 

@@ -127,7 +127,7 @@ export default function Home() {
 
   const isAntigravity = (settings.provider || 'antigravity') === 'antigravity';
   const isGoogleLoggedIn = Boolean(session?.user);
-  const hasConfig = isAntigravity || isGoogleLoggedIn ? true : Boolean(settings.geminiApiKey);
+  const hasConfig = isAntigravity || isGoogleLoggedIn || Boolean(settings.googleAccessToken) ? true : Boolean(settings.geminiApiKey);
 
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;

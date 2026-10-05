@@ -27,8 +27,9 @@ export async function POST(req: NextRequest) {
 
     const apiKey = settings.geminiApiKey || process.env.GEMINI_API_KEY;
     const githubToken = settings.githubToken || process.env.GITHUB_TOKEN || '';
+    const activeGoogleAccessToken = googleAccessToken || settings.googleAccessToken;
     const modelName = settings.selectedModel || process.env.GEMINI_MODEL || 'gemini-3.8-flash';
-    const provider = settings.provider || (isAgyInstalled() ? 'antigravity' : (googleAccessToken ? 'google_oauth' : 'gemini_api'));
+    const provider = settings.provider || (isAgyInstalled() ? 'antigravity' : (activeGoogleAccessToken ? 'google_oauth' : 'gemini_api'));
 
     const encoder = new TextEncoder();
 
@@ -89,7 +90,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Google OAuth Mode o Google AI Studio API Key Mode (Cloud / Vercel / Smartphone)
-    if (!apiKey && !googleAccessToken) {
+    if (!apiKey && !activeGoogleAccessToken) {
       return new Response(
         JSON.stringify({
           error:
@@ -114,7 +115,7 @@ export async function POST(req: NextRequest) {
         try {
           const result = await runAgent({
             apiKey,
-            googleAccessToken,
+            googleAccessToken: activeGoogleAccessToken,
             githubToken,
             modelName,
             repoContext: activeRepo,

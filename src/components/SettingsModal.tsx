@@ -18,6 +18,10 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
   const [provider, setProvider] = useState<AIProvider>(settings.provider || 'antigravity');
   const [githubToken, setGithubToken] = useState(settings.githubToken || '');
   const [geminiApiKey, setGeminiApiKey] = useState(settings.geminiApiKey || '');
+  const [googleClientId, setGoogleClientId] = useState(settings.googleClientId || '');
+  const [googleClientSecret, setGoogleClientSecret] = useState(settings.googleClientSecret || '');
+  const [googleAccessToken, setGoogleAccessToken] = useState(settings.googleAccessToken || '');
+  const [showAdvancedOAuth, setShowAdvancedOAuth] = useState(false);
   const [selectedModel, setSelectedModel] = useState(settings.selectedModel || 'gemini-3.8-flash');
   const [savedNotice, setSavedNotice] = useState(false);
   const [antigravityStatus, setAntigravityStatus] = useState<{ available: boolean; path?: string } | null>(null);
@@ -26,6 +30,9 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
     setProvider(settings.provider || 'antigravity');
     setGithubToken(settings.githubToken || '');
     setGeminiApiKey(settings.geminiApiKey || '');
+    setGoogleClientId(settings.googleClientId || '');
+    setGoogleClientSecret(settings.googleClientSecret || '');
+    setGoogleAccessToken(settings.googleAccessToken || '');
     setSelectedModel(settings.selectedModel || 'gemini-3.8-flash');
   }, [settings, isOpen]);
 
@@ -43,10 +50,24 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Imposta cookie nel browser per consentire a NextAuth di leggere Client ID e Secret dinamici
+    if (typeof document !== 'undefined') {
+      if (googleClientId.trim()) {
+        document.cookie = `google_client_id=${encodeURIComponent(googleClientId.trim())}; path=/; max-age=31536000; SameSite=Lax; Secure`;
+      }
+      if (googleClientSecret.trim()) {
+        document.cookie = `google_client_secret=${encodeURIComponent(googleClientSecret.trim())}; path=/; max-age=31536000; SameSite=Lax; Secure`;
+      }
+    }
+
     onSave({
       provider,
       githubToken: githubToken.trim(),
       geminiApiKey: geminiApiKey.trim(),
+      googleClientId: googleClientId.trim(),
+      googleClientSecret: googleClientSecret.trim(),
+      googleAccessToken: googleAccessToken.trim(),
       selectedModel,
     });
     setSavedNotice(true);
@@ -60,7 +81,14 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
     if (confirm('Vuoi rimuovere le tue impostazioni e credenziali da questo dispositivo?')) {
       setGithubToken('');
       setGeminiApiKey('');
+      setGoogleClientId('');
+      setGoogleClientSecret('');
+      setGoogleAccessToken('');
       setProvider('antigravity');
+      if (typeof document !== 'undefined') {
+        document.cookie = 'google_client_id=; path=/; max-age=0';
+        document.cookie = 'google_client_secret=; path=/; max-age=0';
+      }
       if (onClear) {
         onClear();
       } else {
@@ -76,7 +104,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-800">
           <div className="flex items-center gap-2">
             <Sparkles size={18} className="text-cyan-400" />
-            <h2 className="text-base font-semibold text-neutral-100">Configurazione Motore AI</h2>
+            <h2 className="text-base font-semibold text-neutral-100">Configurazione Applicazione</h2>
           </div>
           <button
             onClick={onClose}
@@ -89,14 +117,77 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
         {/* Form Body */}
         <form onSubmit={handleSave} className="p-5 space-y-4 overflow-y-auto flex-1 text-xs">
           {/* Autenticazione con Google Account */}
-          <div className="space-y-2 p-3.5 bg-neutral-950 border border-neutral-800 rounded-2xl shadow-sm">
-            <span className="font-semibold text-neutral-200 block text-xs">
-              Account Google (Accesso Rapido)
-            </span>
+          <div className="space-y-2.5 p-3.5 bg-neutral-950 border border-neutral-800 rounded-2xl shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-neutral-200 block text-xs">
+                Accesso Google (OAuth)
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowAdvancedOAuth(!showAdvancedOAuth)}
+                className="text-cyan-400 hover:underline text-[11px] font-mono flex items-center gap-1"
+              >
+                {showAdvancedOAuth ? 'Nascondi setup' : '⚙️ Configura Client ID'}
+              </button>
+            </div>
+
             <GoogleSignInButton variant="full" />
-            <p className="text-[10px] text-neutral-500">
-              Accedi con il tuo account Google per programmare da smartphone senza bisogno di inserire chiavi API.
-            </p>
+
+            {/* Configurazione In-App Client ID & Secret per chi non vuole usare Vercel Env */}
+            {showAdvancedOAuth && (
+              <div className="p-3 bg-neutral-900/90 border border-neutral-800 rounded-xl space-y-2.5 animate-fade-in text-[11px] mt-2">
+                <div className="text-neutral-400 leading-relaxed">
+                  Puoi inserire qui il tuo Client ID per far funzionare &ldquo;Accedi con Google&rdquo; senza dover toccare la dashboard di Vercel:
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-neutral-300 font-medium block">
+                    Google OAuth Client ID
+                  </label>
+                  <input
+                    type="text"
+                    value={googleClientId}
+                    onChange={(e) => setGoogleClientId(e.target.value)}
+                    placeholder="xxxx.apps.googleusercontent.com"
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-neutral-200 placeholder-neutral-600 focus:outline-none focus:border-cyan-500 font-mono text-[10px]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-neutral-300 font-medium block">
+                    Google OAuth Client Secret
+                  </label>
+                  <input
+                    type="password"
+                    value={googleClientSecret}
+                    onChange={(e) => setGoogleClientSecret(e.target.value)}
+                    placeholder="GOCSPX-xxxxxxxxxxxxxxxx"
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-neutral-200 placeholder-neutral-600 focus:outline-none focus:border-cyan-500 font-mono text-[10px]"
+                  />
+                </div>
+
+                <div className="text-[10px] text-cyan-400/90 leading-tight">
+                  💡 Salvando, queste chiavi rimarranno solo nel browser del tuo smartphone e abiliteranno il login immediato.
+                </div>
+              </div>
+            )}
+
+            {/* Incolla Access Token Diretto */}
+            <div className="pt-2 border-t border-neutral-800/60 space-y-1">
+              <label className="text-neutral-400 text-[11px] font-medium block">
+                Oppure incolla direttamente un Google Access Token (OAuth):
+              </label>
+              <input
+                type="password"
+                value={googleAccessToken}
+                onChange={(e) => setGoogleAccessToken(e.target.value)}
+                placeholder="ya29.a0xxxxxxxxxxxxxxxxxxxx"
+                className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-neutral-200 placeholder-neutral-600 focus:outline-none focus:border-cyan-500 font-mono text-xs"
+              />
+              <p className="text-[10px] text-neutral-500">
+                Se hai già generato un token di accesso Google (es. da Google OAuth Playground), puoi incollarlo direttamente qui.
+              </p>
+            </div>
           </div>
 
           {/* Modalità / Engine Selector */}
