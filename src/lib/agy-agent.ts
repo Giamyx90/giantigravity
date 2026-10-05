@@ -1,15 +1,41 @@
-import { spawn } from 'child_process';
+import { spawnSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import { AgentStep, DiffChunk } from '@/types';
 import { computeDiff } from '@/lib/diff';
 
-export function getAgyExecutablePath(): string | null {
+export interface AgyExecutableInfo {
+  exe: string;
+  baseArgs: string[];
+}
+
+export function getAgyExecutable(): AgyExecutableInfo | null {
   const home = os.homedir();
   const localAppData = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local');
 
-  const candidatePaths = [
+  // 1. Eseguibile diretto Antigravity Language Server
+  const directLsExe = path.join(
+    localAppData,
+    'Programs',
+    'Antigravity',
+    'resources',
+    'bin',
+    'language_server.exe'
+  );
+  if (fs.existsSync(directLsExe)) {
+    return { exe: directLsExe, baseArgs: ['agentapi'] };
+  }
+
+  // 2. Batch script agentapi.bat in .gemini/antigravity/bin
+  const agentApiBat = path.join(home, '.gemini', 'antigravity', 'bin', 'agentapi.bat');
+  if (fs.existsSync(agentApiBat)) {
+    return { exe: agentApiBat, baseArgs: [] };
+  }
+
+  // 3. Altri percorsi candidati o agy.exe
+  const candidateExes = [
+    path.join(home, 'AppData', 'Roaming', 'Antigravity', 'bin', 'agy-node.cmd'),
     path.join(home, '.gemini', 'antigravity', 'bin', 'agy.exe'),
     path.join(home, '.gemini', 'bin', 'agy.exe'),
     path.join(localAppData, 'agy', 'bin', 'agy.exe'),
@@ -17,43 +43,80 @@ export function getAgyExecutablePath(): string | null {
     path.join(home, '.gemini', 'bin', 'agy'),
   ];
 
-  for (const candidate of candidatePaths) {
+  for (const candidate of candidateExes) {
     if (fs.existsSync(/*turbopackIgnore: true*/ candidate)) {
-      return candidate;
+      return { exe: candidate, baseArgs: [] };
     }
   }
 
-  // Fallback to searching in PATH
-  return 'agy';
+  return null;
+}
+
+export function getAgyExecutablePath(): string | null {
+  const target = getAgyExecutable();
+  return target ? target.exe : null;
 }
 
 export function isAgyInstalled(): boolean {
-  const agyPath = getAgyExecutablePath();
-  if (agyPath && fs.existsSync(/*turbopackIgnore: true*/ agyPath)) {
-    return true;
-  }
-  return false;
+  return Boolean(getAgyExecutable());
 }
 
-export function normalizeAgyModel(model?: string): string {
-  if (!model) return 'gemini-3.8-flash-high';
-  if (model.endsWith('-high') || model.endsWith('-medium') || model.endsWith('-low')) {
-    return model;
+export function normalizeAgyModel(model?: string): 'flash_lite' | 'flash' | 'pro' {
+  if (!model) return 'flash';
+  const lower = model.toLowerCase();
+  if (lower.includes('lite')) return 'flash_lite';
+  if (lower.includes('pro') || lower.includes('opus')) return 'pro';
+  return 'flash';
+}
+
+function parseToolArgs(rawArgs: any): Record<string, any> {
+  if (!rawArgs || typeof rawArgs !== 'object') return {};
+  const cleaned: Record<string, any> = {};
+  for (const [key, val] of Object.entries(rawArgs)) {
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (
+        (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+        (trimmed.startsWith("'") && trimmed.endsWith("'"))
+      ) {
+        try {
+          cleaned[key] = JSON.parse(trimmed);
+        } catch {
+          cleaned[key] = trimmed.slice(1, -1);
+        }
+      } else {
+        cleaned[key] = val;
+      }
+    } else {
+      cleaned[key] = val;
+    }
   }
+  return cleaned;
+}
 
-  const modelMap: Record<string, string> = {
-    'gemini-3.8-flash': 'gemini-3.8-flash-high',
-    'gemini-3.7-flash': 'gemini-3.7-flash-high',
-    'gemini-3.6-flash': 'gemini-3.6-flash-high',
-    'gemini-3.1-pro': 'gemini-3.1-pro-high',
-    'claude-opus-5-5': 'claude-opus-5-5-high',
-    'claude-sonnet-5-5': 'claude-sonnet-5-5-high',
-    'gpt-oss-120b': 'gpt-oss-120b-medium',
-    'gemini-2.5-flash': 'gemini-3.8-flash-high',
-    'gemini-2.5-pro': 'gemini-3.1-pro-high',
-  };
-
-  return modelMap[model] || `${model}-high`;
+function makeSummary(toolName: string, args: Record<string, any>): string {
+  if (toolName === 'view_file') {
+    const file = args.AbsolutePath || args.path || 'file';
+    return `Lettura file: ${path.basename(file)}`;
+  }
+  if (toolName === 'write_to_file') {
+    const file = args.TargetFile || args.path || 'file';
+    return `Creazione/Scrittura file: ${path.basename(file)}`;
+  }
+  if (toolName === 'replace_file_content') {
+    const file = args.TargetFile || args.path || 'file';
+    return `Modifica file: ${path.basename(file)}`;
+  }
+  if (toolName === 'run_command') {
+    return `Comando terminale: ${args.CommandLine || 'comando'}`;
+  }
+  if (toolName === 'list_directory' || toolName === 'list_dir') {
+    return `Esplorazione cartella: ${args.dir_path || args.path || '.'}`;
+  }
+  if (toolName === 'search_code' || toolName === 'grep_search') {
+    return `Ricerca codice: "${args.query || args.pattern || ''}"`;
+  }
+  return `Esecuzione: ${toolName}`;
 }
 
 export interface RunAgyParams {
@@ -68,151 +131,216 @@ export interface RunAgyParams {
 
 export async function runAgyAgent({
   prompt,
-  modelName = 'gemini-3.8-flash-high',
+  modelName = 'gemini-3.8-flash',
   conversationId,
   workspaceDir,
   onStepUpdate,
   onChunk,
   onInit,
 }: RunAgyParams): Promise<{ reply: string; steps: AgentStep[]; conversationId?: string }> {
-  const agyExe = getAgyExecutablePath();
+  const agy = getAgyExecutable();
 
-  if (!agyExe) {
+  if (!agy) {
     throw new Error(
-      'Antigravity CLI (agy) non trovato. Assicurati che Google Antigravity per Windows sia installato.'
+      'Google Antigravity non trovato sul PC locale. Assicurati che sia installato o avvia Antigravity.'
     );
   }
 
-  const normalizedModel = normalizeAgyModel(modelName);
+  const modelTier = normalizeAgyModel(modelName);
   const cwd = workspaceDir || process.cwd();
+  const home = os.homedir();
 
-  const args: string[] = [
-    '-p',
-    prompt,
-    '--model',
-    normalizedModel,
-    '--output-format',
-    'stream-json',
-    '--dangerously-skip-permissions',
-  ];
+  let activeConversationId = conversationId;
+  let initialLineCount = 0;
 
-  if (conversationId) {
-    args.push('--conversation', conversationId);
+  // 1. Se la conversazione esiste già, contiamo le righe prima del nuovo messaggio
+  if (activeConversationId) {
+    const transcriptPath = path.join(
+      home,
+      '.gemini',
+      'antigravity',
+      'brain',
+      activeConversationId,
+      '.system_generated',
+      'logs',
+      'transcript.jsonl'
+    );
+    if (fs.existsSync(transcriptPath)) {
+      try {
+        const existingContent = fs.readFileSync(transcriptPath, 'utf8');
+        initialLineCount = existingContent.trim().split('\n').filter(Boolean).length;
+      } catch (e) {
+        initialLineCount = 0;
+      }
+    }
+
+    // Invia messaggio alla conversazione esistente
+    const args = [...agy.baseArgs, 'send-message', activeConversationId, prompt];
+    const proc = spawnSync(/*turbopackIgnore: true*/ agy.exe, args, {
+      cwd,
+      encoding: 'utf8',
+      windowsHide: true,
+      maxBuffer: 10 * 1024 * 1024,
+    });
+
+    if (proc.status !== 0 && proc.status !== null) {
+      throw new Error(`Errore nell'invio del messaggio ad Antigravity: ${proc.stderr || proc.stdout}`);
+    }
+  } else {
+    // Nuova conversazione
+    const args = [
+      ...agy.baseArgs,
+      'new-conversation',
+      `--model=${modelTier}`,
+      '--title=Giantigravity Mobile',
+      prompt,
+    ];
+
+    const proc = spawnSync(/*turbopackIgnore: true*/ agy.exe, args, {
+      cwd,
+      encoding: 'utf8',
+      windowsHide: true,
+      maxBuffer: 10 * 1024 * 1024,
+    });
+
+    if (proc.status !== 0 && proc.status !== null) {
+      throw new Error(`Impossibile avviare la conversazione Antigravity: ${proc.stderr || proc.stdout}`);
+    }
+
+    try {
+      const parsed = JSON.parse(proc.stdout.trim());
+      activeConversationId = parsed?.response?.newConversation?.conversationId;
+    } catch (e) {
+      throw new Error(`Risposta non valida da Antigravity: ${proc.stdout}`);
+    }
+
+    if (!activeConversationId) {
+      throw new Error('Nessun ID conversazione restituito da Antigravity.');
+    }
+
+    if (onInit) {
+      onInit({ conversationId: activeConversationId });
+    }
+    initialLineCount = 0;
   }
 
+  const transcriptPath = path.join(
+    home,
+    '.gemini',
+    'antigravity',
+    'brain',
+    activeConversationId,
+    '.system_generated',
+    'logs',
+    'transcript.jsonl'
+  );
+
+  // 2. Monitoraggio del transcript in tempo reale
   return new Promise((resolve, reject) => {
     const stepsMap = new Map<string, AgentStep>();
     let finalReply = '';
-    let currentConversationId = conversationId;
-    let accumulatedText = '';
+    let processedLineIndex = initialLineCount;
+    let attempts = 0;
+    const maxAttempts = 360; // 360 * 250ms = 90 secondi max per turno
 
-    const child = spawn(/*turbopackIgnore: true*/ agyExe, args, {
-      cwd,
-      env: { ...process.env },
-      windowsHide: true,
-    });
+    const interval = setInterval(() => {
+      attempts++;
 
-    let buffer = '';
-
-    child.stdout.on('data', (data: Buffer) => {
-      buffer += data.toString('utf8');
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-
+      if (fs.existsSync(transcriptPath)) {
         try {
-          const parsed = JSON.parse(trimmed);
+          const raw = fs.readFileSync(transcriptPath, 'utf8');
+          const lines = raw.trim().split('\n').filter(Boolean);
 
-          if (parsed.event === 'init') {
-            currentConversationId = parsed.conversation_id;
-            if (onInit && currentConversationId) {
-              onInit({ conversationId: currentConversationId });
+          while (processedLineIndex < lines.length) {
+            const lineStr = lines[processedLineIndex];
+            processedLineIndex++;
+
+            let parsed: any;
+            try {
+              parsed = JSON.parse(lineStr);
+            } catch {
+              continue;
             }
-          } else if (parsed.event === 'step_update' && parsed.step_update) {
-            const update = parsed.step_update;
 
-            if (update.step_type === 'tool') {
-              const stepId = `agy-step-${update.step_index}`;
-              const toolName = update.tool_name || 'tool';
-              const params = update.tool_info?.parameters || {};
+            if (parsed.source === 'MODEL') {
+              if (parsed.type === 'PLANNER_RESPONSE') {
+                // Gestione chiamate a strumenti (tools)
+                if (parsed.tool_calls && Array.isArray(parsed.tool_calls) && parsed.tool_calls.length > 0) {
+                  for (let i = 0; i < parsed.tool_calls.length; i++) {
+                    const call = parsed.tool_calls[i];
+                    const toolName = call.name || 'tool';
+                    const toolArgs = parseToolArgs(call.args);
+                    const stepId = `step-${parsed.step_index}-${i}`;
 
-              let diff: DiffChunk[] | undefined;
-              if (toolName === 'replace_file_content' && params.TargetContent && params.ReplacementContent) {
-                diff = computeDiff(params.TargetContent, params.ReplacementContent);
-              } else if (toolName === 'write_to_file' && params.CodeContent) {
-                diff = computeDiff('', params.CodeContent);
+                    let diff: DiffChunk[] | undefined;
+                    if (toolName === 'replace_file_content' && toolArgs.TargetContent && toolArgs.ReplacementContent) {
+                      diff = computeDiff(toolArgs.TargetContent, toolArgs.ReplacementContent);
+                    } else if (toolName === 'write_to_file' && toolArgs.CodeContent) {
+                      diff = computeDiff('', toolArgs.CodeContent);
+                    }
+
+                    const summary = makeSummary(toolName, toolArgs);
+                    const step: AgentStep = {
+                      id: stepId,
+                      tool: toolName,
+                      summary,
+                      status: 'running',
+                      args: toolArgs,
+                      diff,
+                      timestamp: Date.now(),
+                    };
+
+                    stepsMap.set(stepId, step);
+                    onStepUpdate(step);
+                  }
+                }
+
+                // Risposta finale testuale del turno
+                if (parsed.content && (!parsed.tool_calls || parsed.tool_calls.length === 0)) {
+                  finalReply = parsed.content;
+                  onChunk(finalReply);
+                  clearInterval(interval);
+                  resolve({
+                    reply: finalReply,
+                    steps: Array.from(stepsMap.values()),
+                    conversationId: activeConversationId,
+                  });
+                  return;
+                }
+              } else if (parsed.type === 'GENERIC') {
+                // Risultato di esecuzione di un tool
+                const runningSteps = Array.from(stepsMap.values()).filter((s) => s.status === 'running');
+                if (runningSteps.length > 0) {
+                  const lastStep = runningSteps[runningSteps.length - 1];
+                  lastStep.status = 'completed';
+                  lastStep.result = parsed.content;
+                  stepsMap.set(lastStep.id, lastStep);
+                  onStepUpdate(lastStep);
+                }
               }
-
-              let summary = `Esecuzione ${toolName}`;
-              if (toolName === 'view_file') {
-                summary = `Lettura file: ${params.AbsolutePath ? path.basename(params.AbsolutePath) : (params.path || 'file')}`;
-              } else if (toolName === 'write_to_file') {
-                summary = `Scrittura file: ${params.TargetFile ? path.basename(params.TargetFile) : (params.path || 'file')}`;
-              } else if (toolName === 'replace_file_content') {
-                summary = `Modifica file: ${params.TargetFile ? path.basename(params.TargetFile) : (params.path || 'file')}`;
-              } else if (toolName === 'run_command') {
-                summary = `Comando: ${params.CommandLine || 'terminale'}`;
-              } else if (toolName === 'list_dir' || toolName === 'list_directory') {
-                summary = `Analisi cartella: ${params.dir_path || params.path || '.'}`;
-              } else if (toolName === 'grep_search' || toolName === 'search_code') {
-                summary = `Ricerca codice: "${params.pattern || params.query || ''}"`;
-              }
-
-              const existing = stepsMap.get(stepId);
-              const step: AgentStep = {
-                id: stepId,
-                tool: toolName,
-                summary: existing?.summary || summary,
-                status: update.state === 'DONE' ? 'completed' : 'running',
-                args: params,
-                result: update.tool_info?.output,
-                diff: diff || existing?.diff,
-                timestamp: existing?.timestamp || Date.now(),
-              };
-
-              stepsMap.set(stepId, step);
-              onStepUpdate(step);
-            } else if (update.step_type === 'agent_response' && update.text_delta) {
-              accumulatedText += update.text_delta;
-              onChunk(update.text_delta);
             }
-          } else if (parsed.event === 'result' && parsed.result) {
-            finalReply = parsed.result.response || accumulatedText;
           }
-        } catch (e) {
-          // Non-JSON output line, ignore or log
+        } catch (readErr) {
+          // Errore temporaneo di lettura concorrente, si riprova al prossimo tick
         }
       }
-    });
 
-    let stderrOutput = '';
-    child.stderr.on('data', (data: Buffer) => {
-      stderrOutput += data.toString('utf8');
-    });
-
-    child.on('error', (err) => {
-      reject(new Error(`Impossibile avviare il processo Antigravity CLI: ${err.message}`));
-    });
-
-    child.on('close', (code) => {
-      if (code !== 0 && !finalReply && !accumulatedText) {
-        reject(
-          new Error(
-            `Antigravity CLI terminato con codice ${code}. ${stderrOutput.trim() || 'Nessun messaggio di errore.'}`
-          )
-        );
-        return;
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        if (finalReply) {
+          resolve({
+            reply: finalReply,
+            steps: Array.from(stepsMap.values()),
+            conversationId: activeConversationId,
+          });
+        } else {
+          resolve({
+            reply: 'Operazione completata con successo.',
+            steps: Array.from(stepsMap.values()),
+            conversationId: activeConversationId,
+          });
+        }
       }
-
-      const allSteps = Array.from(stepsMap.values());
-      resolve({
-        reply: finalReply || accumulatedText,
-        steps: allSteps,
-        conversationId: currentConversationId,
-      });
-    });
+    }, 250);
   });
 }

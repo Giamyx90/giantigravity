@@ -30,6 +30,7 @@ interface HeaderProps {
   selectedModel?: string;
   provider?: any;
   onOpenModelSelector?: () => void;
+  isAgyAvailable?: boolean;
 }
 
 export function Header({
@@ -42,6 +43,7 @@ export function Header({
   setIsRepoModalOpen,
   selectedModel = 'gemini-3.8-flash',
   onOpenModelSelector,
+  isAgyAvailable,
 }: HeaderProps) {
   const [repos, setRepos] = useState<GitHubRepoItem[]>([]);
   const [branches, setBranches] = useState<string[]>([]);
@@ -137,6 +139,15 @@ export function Header({
           <div>
             <h1 className="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
               <span>Giantigravity</span>
+              {isAgyAvailable && (
+                <span
+                  title="Connesso a Google Antigravity Locale"
+                  className="hidden md:inline-flex items-center gap-1 text-[9px] font-semibold text-emerald-400 bg-emerald-950/80 border border-emerald-700/60 px-1.5 py-0.5 rounded-full"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  PC Nativo
+                </span>
+              )}
             </h1>
           </div>
         </div>

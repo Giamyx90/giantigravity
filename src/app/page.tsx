@@ -19,6 +19,7 @@ export default function Home() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isRepoModalOpen, setIsRepoModalOpen] = useState(false);
   const [isModelModalOpen, setIsModelModalOpen] = useState(false);
+  const [isAgyAvailable, setIsAgyAvailable] = useState<boolean | null>(null);
 
   // Settings & Context stored in localStorage for persistence on phone
   const [settings, setSettings] = useState<UserSettings>({
@@ -35,6 +36,18 @@ export default function Home() {
 
   const [conversationId, setConversationId] = useState<string | undefined>(undefined);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Controlla disponibilità Antigravity locale nativo
+  useEffect(() => {
+    fetch('/api/antigravity/status')
+      .then((res) => res.json())
+      .then((data) => {
+        setIsAgyAvailable(Boolean(data.available));
+      })
+      .catch(() => {
+        setIsAgyAvailable(false);
+      });
+  }, []);
 
   // Load saved settings & repo from localStorage
   useEffect(() => {
@@ -121,7 +134,7 @@ export default function Home() {
 
   const isGoogleLoggedIn = Boolean(session?.user);
   const hasOAuthClientKeys = Boolean(settings.googleClientId && settings.googleClientSecret);
-  const hasConfig = isGoogleLoggedIn;
+  const hasConfig = isGoogleLoggedIn || Boolean(isAgyAvailable) || Boolean(settings.geminiApiKey);
 
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
@@ -297,6 +310,7 @@ export default function Home() {
         selectedModel={settings.selectedModel}
         provider={settings.provider || 'antigravity'}
         onOpenModelSelector={() => setIsModelModalOpen(true)}
+        isAgyAvailable={Boolean(isAgyAvailable)}
       />
 
       {/* Main Chat Messages View */}
@@ -342,7 +356,22 @@ export default function Home() {
             )}
 
             {/* Step-by-Step Onboarding Cards */}
-            {!isGoogleLoggedIn ? (
+            {isAgyAvailable ? (
+              <div className="p-4 bg-gradient-to-r from-emerald-950/40 via-teal-950/20 to-neutral-900 border border-emerald-600/60 rounded-2xl text-left shadow-lg">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2 text-emerald-300 font-semibold text-xs">
+                    <Sparkles size={15} className="text-emerald-400" />
+                    <span>Antigravity Locale Attivo</span>
+                  </div>
+                  <span className="text-[10px] text-emerald-300 font-bold px-2.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-600">
+                    Nativo PC ● Connesso
+                  </span>
+                </div>
+                <p className="text-[11px] text-neutral-300 leading-relaxed">
+                  Giantigravity è connesso al motore Google Antigravity sul tuo PC. Nessuna API key o login richiesto: scrivi direttamente qui sotto per programmare!
+                </p>
+              </div>
+            ) : !isGoogleLoggedIn ? (
               <div
                 onClick={() => {
                   if (hasOAuthClientKeys) {
