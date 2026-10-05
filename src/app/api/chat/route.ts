@@ -100,6 +100,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Verifica se il token OAuth della sessione NextAuth attuale possiede l'ambito cloud-platform
+    if (activeGoogleAccessToken && !apiKey) {
+      try {
+        const tokenRes = await fetch(
+          `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(activeGoogleAccessToken)}`
+        );
+        if (tokenRes.ok) {
+          const tokenData = await tokenRes.json();
+          if (tokenData.scope && !tokenData.scope.includes('cloud-platform')) {
+            return new Response(
+              JSON.stringify({
+                error:
+                  'La tua sessione di accesso attuale risale a prima dell\'aggiornamento dei permessi. Tocca il pulsante "Esci" in alto a destra e poi di nuovo "Accedi con Google" per rinnovare la sessione con i nuovi permessi!',
+              }),
+              { status: 403, headers: { 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+      } catch (e) {
+        console.warn('Verifica token scope non completata:', e);
+      }
+    }
+
+    // Estrai il Google Cloud Project Number/ID dal Client ID per l'attribuzione della quota
+    const rawClientId = settings.googleClientId || req.cookies.get('google_client_id')?.value || process.env.GOOGLE_CLIENT_ID || '';
+    const googleProject = rawClientId.match(/^([0-9]+)-/)?.[1] || process.env.GOOGLE_CLOUD_PROJECT || undefined;
+
     const activeRepo: RepoContext = repoContext || {
       owner: 'Giamyx90',
       repo: 'giantigravity',
@@ -116,6 +143,7 @@ export async function POST(req: NextRequest) {
           const result = await runAgent({
             apiKey,
             googleAccessToken: activeGoogleAccessToken,
+            googleProject,
             githubToken,
             modelName,
             repoContext: activeRepo,
@@ -134,7 +162,7 @@ export async function POST(req: NextRequest) {
           console.error('Agent error:', err);
           let errorMsg = err.message || 'Errore durante l\'esecuzione dell\'agente.';
           if (errorMsg.includes('ACCESS_TOKEN_SCOPE_INSUFFICIENT') || errorMsg.includes('insufficient authentication scopes')) {
-            errorMsg = 'Il tuo account Google è collegato, ma mancano i permessi speciali per Gemini (ACCESS_TOKEN_SCOPE_INSUFFICIENT). Verifica di aver incluso l\'ambito "https://www.googleapis.com/auth/cloud-platform" nella schermata consenso di Google Cloud ed effettuato nuovamente il login.';
+            errorMsg = 'Il tuo token Google non possiede i permessi per accedere a Gemini. Clicca su "Esci" in alto a destra e accedi di nuovo con "Accedi con Google" per confermare l\'accesso al tuo account.';
           } else if (errorMsg.includes('invalid authentication credentials')) {
             errorMsg = 'Sessione Google scaduta o credenziali non valide. Tocca "Accedi con Google" per rinnovare la sessione.';
           }

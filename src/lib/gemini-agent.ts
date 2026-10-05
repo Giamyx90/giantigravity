@@ -123,6 +123,7 @@ export const agentToolDeclarations = [
 export interface AgentRunParams {
   apiKey?: string;
   googleAccessToken?: string;
+  googleProject?: string;
   githubToken: string;
   modelName?: string;
   repoContext: RepoContext;
@@ -135,6 +136,7 @@ export interface AgentRunParams {
 export async function runAgent({
   apiKey,
   googleAccessToken,
+  googleProject,
   githubToken,
   modelName = 'gemini-2.5-flash',
   repoContext,
@@ -156,6 +158,9 @@ export async function runAgent({
     (ai as any).apiClient.clientOptions.auth.addAuthHeaders = async (headers: Headers) => {
       headers.delete('x-goog-api-key');
       headers.set('Authorization', `Bearer ${cleanAccessToken}`);
+      if (googleProject) {
+        headers.set('x-goog-user-project', googleProject);
+      }
     };
   }
 
