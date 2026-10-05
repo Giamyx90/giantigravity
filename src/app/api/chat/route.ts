@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     const githubToken = settings.githubToken || process.env.GITHUB_TOKEN || '';
     const activeGoogleAccessToken = googleAccessToken || serverAccessToken || settings.googleAccessToken;
     const modelName = settings.selectedModel || process.env.GEMINI_MODEL || 'gemini-3.8-flash';
-    const provider = settings.provider || (isAgyInstalled() ? 'antigravity' : (activeGoogleAccessToken ? 'google_oauth' : 'gemini_api'));
+    const provider = isAgyInstalled() ? 'antigravity' : (settings.provider || (activeGoogleAccessToken ? 'google_oauth' : 'gemini_api'));
 
     const encoder = new TextEncoder();
 
