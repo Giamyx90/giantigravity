@@ -178,7 +178,7 @@ export default function Home() {
           prompt: text,
           repoContext: activeRepo,
           conversationId,
-          googleAccessToken: (session as any)?.accessToken,
+          googleAccessToken: (session as any)?.accessToken || settings.googleAccessToken,
           settings,
         }),
       });
@@ -386,6 +386,32 @@ export default function Home() {
                 </button>
               </div>
             )}
+
+            {/* Quick Test Prompt Buttons */}
+            <div className="space-y-1.5 text-left">
+              <div className="text-[11px] text-neutral-400 font-medium px-1 flex items-center gap-1">
+                <Sparkles size={12} className="text-cyan-400" />
+                <span>Test rapido connessione:</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleSendMessage('Ciao! Fai un test rapido e spiegami cosa puoi fare su questo repository.')}
+                  className="p-2.5 rounded-xl border border-neutral-800 bg-neutral-900/80 hover:bg-neutral-800 text-neutral-300 hover:text-white text-[11px] text-left transition-all flex items-center justify-between group shadow-sm"
+                >
+                  <span className="truncate">👋 &ldquo;Fai un test rapido&rdquo;</span>
+                  <span className="text-[10px] text-cyan-400 group-hover:translate-x-0.5 transition-transform shrink-0 font-medium">Invia ➔</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSendMessage('Quali file sono presenti nel repository? Mostrami la struttura di base.')}
+                  className="p-2.5 rounded-xl border border-neutral-800 bg-neutral-900/80 hover:bg-neutral-800 text-neutral-300 hover:text-white text-[11px] text-left transition-all flex items-center justify-between group shadow-sm"
+                >
+                  <span className="truncate">📂 &ldquo;Mostrami i file del progetto&rdquo;</span>
+                  <span className="text-[10px] text-cyan-400 group-hover:translate-x-0.5 transition-transform shrink-0 font-medium">Invia ➔</span>
+                </button>
+              </div>
+            </div>
 
             {/* Capabilities grid */}
             <div className="grid grid-cols-2 gap-2 text-left">

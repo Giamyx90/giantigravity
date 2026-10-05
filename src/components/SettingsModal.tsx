@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { UserSettings, AVAILABLE_MODELS, AIProvider } from '@/types';
-import { X, Key, Sparkles, Check, ExternalLink, ShieldCheck, Trash2, Cpu, CheckCircle2, AlertCircle, Copy } from 'lucide-react';
+import { X, Key, Sparkles, Check, ExternalLink, ShieldCheck, Trash2, Cpu, CheckCircle2, AlertCircle, Copy, Loader2, Zap } from 'lucide-react';
 import { GithubIcon } from '@/components/GithubIcon';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 
@@ -27,6 +27,65 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
   const [antigravityStatus, setAntigravityStatus] = useState<{ available: boolean; path?: string } | null>(null);
   const [copiedUri, setCopiedUri] = useState(false);
   const [callbackUrl, setCallbackUrl] = useState('');
+
+  // Token & API Key verification states
+  const [isVerifyingToken, setIsVerifyingToken] = useState(false);
+  const [tokenVerificationResult, setTokenVerificationResult] = useState<{
+    valid: boolean;
+    email?: string;
+    minutesLeft?: number;
+    error?: string;
+  } | null>(null);
+
+  const [isVerifyingApiKey, setIsVerifyingApiKey] = useState(false);
+  const [apiKeyVerificationResult, setApiKeyVerificationResult] = useState<{
+    valid: boolean;
+    error?: string;
+  } | null>(null);
+
+  const handleVerifyToken = async () => {
+    if (!googleAccessToken.trim()) return;
+    setIsVerifyingToken(true);
+    setTokenVerificationResult(null);
+    try {
+      const res = await fetch('/api/auth/verify-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: googleAccessToken.trim() }),
+      });
+      const data = await res.json();
+      setTokenVerificationResult(data);
+      if (data.valid) {
+        setProvider('google_oauth');
+      }
+    } catch (e: any) {
+      setTokenVerificationResult({ valid: false, error: e.message || 'Errore di connessione' });
+    } finally {
+      setIsVerifyingToken(false);
+    }
+  };
+
+  const handleVerifyApiKey = async () => {
+    if (!geminiApiKey.trim()) return;
+    setIsVerifyingApiKey(true);
+    setApiKeyVerificationResult(null);
+    try {
+      const res = await fetch('/api/auth/verify-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: geminiApiKey.trim() }),
+      });
+      const data = await res.json();
+      setApiKeyVerificationResult(data);
+      if (data.valid) {
+        setProvider('gemini_api');
+      }
+    } catch (e: any) {
+      setApiKeyVerificationResult({ valid: false, error: e.message || 'Errore di connessione' });
+    } finally {
+      setIsVerifyingApiKey(false);
+    }
+  };
 
   useEffect(() => {
     setProvider(settings.provider || 'antigravity');
@@ -237,19 +296,86 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
             )}
 
             {/* Incolla Access Token Diretto */}
-            <div className="pt-2 border-t border-neutral-800/60 space-y-1">
-              <label className="text-neutral-400 text-[11px] font-medium block">
-                Oppure incolla direttamente un Google Access Token (OAuth):
-              </label>
+            <div className="pt-2 border-t border-neutral-800/60 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-neutral-400 text-[11px] font-medium block">
+                  Oppure incolla direttamente un Google Access Token (OAuth):
+                </label>
+                {googleAccessToken.trim() && (
+                  <button
+                    type="button"
+                    onClick={handleVerifyToken}
+                    disabled={isVerifyingToken}
+                    className="text-cyan-400 hover:text-cyan-300 text-[11px] font-medium flex items-center gap-1 transition-colors disabled:opacity-50"
+                  >
+                    {isVerifyingToken ? (
+                      <>
+                        <Loader2 size={11} className="animate-spin" />
+                        <span>Verifica...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap size={11} />
+                        <span>⚡ Verifica se funziona</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+
               <input
                 type="password"
                 value={googleAccessToken}
-                onChange={(e) => setGoogleAccessToken(e.target.value)}
+                onChange={(e) => {
+                  setGoogleAccessToken(e.target.value);
+                  setTokenVerificationResult(null);
+                }}
                 placeholder="ya29.a0xxxxxxxxxxxxxxxxxxxx"
                 className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-neutral-200 placeholder-neutral-600 focus:outline-none focus:border-cyan-500 font-mono text-xs"
               />
+
+              {/* Risultato della verifica Token */}
+              {tokenVerificationResult && (
+                <div
+                  className={`p-2.5 rounded-xl border text-[11px] space-y-1 animate-fade-in ${
+                    tokenVerificationResult.valid
+                      ? 'bg-emerald-950/40 border-emerald-800/80 text-emerald-300'
+                      : 'bg-rose-950/40 border-rose-800/80 text-rose-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 font-semibold">
+                    {tokenVerificationResult.valid ? (
+                      <>
+                        <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />
+                        <span>Token Google Valido e Funzionante!</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle size={13} className="text-rose-400 shrink-0" />
+                        <span>Token non valido o scaduto</span>
+                      </>
+                    )}
+                  </div>
+                  {tokenVerificationResult.valid ? (
+                    <div className="text-[10px] text-neutral-300 space-y-0.5">
+                      {tokenVerificationResult.email && (
+                        <div>• Account Google: <span className="font-mono text-emerald-300 font-medium">{tokenVerificationResult.email}</span></div>
+                      )}
+                      {tokenVerificationResult.minutesLeft !== undefined && (
+                        <div>• Scadenza stimata: <span className="font-semibold text-emerald-300">tra circa {tokenVerificationResult.minutesLeft} minuti</span> (i token ya29 durano 60m)</div>
+                      )}
+                      <div>• Modalità <span className="font-semibold text-cyan-300">Google OAuth</span> attivata con successo!</div>
+                    </div>
+                  ) : (
+                    <div className="text-[10px] text-rose-300/90 leading-tight">
+                      {tokenVerificationResult.error || 'Verifica che il token sia attivo e abbia lo scope generative-language.'}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <p className="text-[10px] text-neutral-500">
-                Se hai già generato un token di accesso Google (es. da Google OAuth Playground), puoi incollarlo direttamente qui.
+                Se hai generato un token di accesso Google (es. da OAuth Playground), tocca <strong>&ldquo;⚡ Verifica se funziona&rdquo;</strong> per testarlo.
               </p>
             </div>
           </div>
@@ -346,27 +472,75 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
           {/* Gemini API Key (Visible only in gemini_api mode) */}
           {provider === 'gemini_api' && (
             <div className="space-y-1.5 animate-fade-in">
-              <label className="flex items-center justify-between text-neutral-300 font-medium">
+              <div className="flex items-center justify-between text-neutral-300 font-medium">
                 <span className="flex items-center gap-1.5">
                   <Key size={14} className="text-cyan-400" />
                   La tua Google Gemini API Key
                 </span>
-                <a
-                  href="https://aistudio.google.com/app/apikey"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-cyan-400 hover:underline flex items-center gap-1 text-[11px]"
-                >
-                  Ottieni chiave gratuita <ExternalLink size={10} />
-                </a>
-              </label>
+                <div className="flex items-center gap-2">
+                  {geminiApiKey.trim() && (
+                    <button
+                      type="button"
+                      onClick={handleVerifyApiKey}
+                      disabled={isVerifyingApiKey}
+                      className="text-amber-400 hover:text-amber-300 text-[11px] font-medium flex items-center gap-1 transition-colors disabled:opacity-50"
+                    >
+                      {isVerifyingApiKey ? (
+                        <>
+                          <Loader2 size={11} className="animate-spin" />
+                          <span>Verifica...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Zap size={11} />
+                          <span>⚡ Testa Chiave</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                  <a
+                    href="https://aistudio.google.com/app/apikey"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-cyan-400 hover:underline flex items-center gap-1 text-[11px]"
+                  >
+                    Ottieni chiave <ExternalLink size={10} />
+                  </a>
+                </div>
+              </div>
               <input
                 type="password"
                 value={geminiApiKey}
-                onChange={(e) => setGeminiApiKey(e.target.value)}
+                onChange={(e) => {
+                  setGeminiApiKey(e.target.value);
+                  setApiKeyVerificationResult(null);
+                }}
                 placeholder="AIzaSyxxxxxxxxxxxxxxxxxxxx"
                 className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-neutral-200 placeholder-neutral-600 focus:outline-none focus:border-cyan-500 font-mono"
               />
+              {apiKeyVerificationResult && (
+                <div
+                  className={`p-2 rounded-xl border text-[11px] space-y-0.5 animate-fade-in ${
+                    apiKeyVerificationResult.valid
+                      ? 'bg-emerald-950/40 border-emerald-800/80 text-emerald-300'
+                      : 'bg-rose-950/40 border-rose-800/80 text-rose-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 font-semibold text-[11px]">
+                    {apiKeyVerificationResult.valid ? (
+                      <>
+                        <CheckCircle2 size={12} className="text-emerald-400" />
+                        <span>API Key valida e connessa a Gemini!</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle size={12} className="text-rose-400" />
+                        <span>{apiKeyVerificationResult.error || 'API Key non valida o quote esaurite'}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
               <p className="text-[11px] text-neutral-500">
                 Soggetto alle quote e ai limiti di chiamate al minuto del piano Google AI Studio.
               </p>
