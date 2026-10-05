@@ -183,6 +183,24 @@ export async function POST(req: NextRequest) {
             }
           }
 
+          // Se l'errore è dovuto ad ambiti insufficienti, interroga tokeninfo per mostrare esattamente quali ambiti ha il token attuale
+          if (rawError.includes('ACCESS_TOKEN_SCOPE_INSUFFICIENT') && activeGoogleAccessToken) {
+            try {
+              const infoRes = await fetch(
+                `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(activeGoogleAccessToken)}`
+              );
+              if (infoRes.ok) {
+                const infoData = await infoRes.json();
+                rawError += `\n\n🔍 [Diagnostica Ambiti Token]\nAmbiti presenti nel tuo token attuale: "${infoData.scope || 'nessuno'}"`;
+                if (!infoData.scope?.includes('cloud-platform')) {
+                  rawError += `\n⚠️ Come vedi, l'ambito "https://www.googleapis.com/auth/cloud-platform" NON è stato incluso da Google nel token.`;
+                }
+              }
+            } catch (e) {
+              console.warn('Errore lettura tokeninfo debug:', e);
+            }
+          }
+
           sendEvent({
             type: 'error',
             error: rawError,
