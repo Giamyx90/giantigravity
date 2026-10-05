@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { UserSettings, AVAILABLE_MODELS, AIProvider } from '@/types';
-import { X, Key, Sparkles, Check, ExternalLink, ShieldCheck, Trash2, Cpu, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, Key, Sparkles, Check, ExternalLink, ShieldCheck, Trash2, Cpu, CheckCircle2, AlertCircle, Copy } from 'lucide-react';
 import { GithubIcon } from '@/components/GithubIcon';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 
@@ -25,6 +25,8 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
   const [selectedModel, setSelectedModel] = useState(settings.selectedModel || 'gemini-3.8-flash');
   const [savedNotice, setSavedNotice] = useState(false);
   const [antigravityStatus, setAntigravityStatus] = useState<{ available: boolean; path?: string } | null>(null);
+  const [copiedUri, setCopiedUri] = useState(false);
+  const [callbackUrl, setCallbackUrl] = useState('');
 
   useEffect(() => {
     setProvider(settings.provider || 'antigravity');
@@ -46,6 +48,22 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setCallbackUrl(`${window.location.origin}/api/auth/callback/google`);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    const handleCustom = (e: any) => {
+      if (e?.detail?.focus === 'oauth') {
+        setShowAdvancedOAuth(true);
+      }
+    };
+    window.addEventListener('open-settings', handleCustom);
+    return () => window.removeEventListener('open-settings', handleCustom);
+  }, []);
+
   if (!isOpen) return null;
 
   const handleSave = (e: React.FormEvent) => {
@@ -53,11 +71,17 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
 
     // Imposta cookie nel browser per consentire a NextAuth di leggere Client ID e Secret dinamici
     if (typeof document !== 'undefined') {
+      const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
+      const secureFlag = isHttps ? '; Secure' : '';
       if (googleClientId.trim()) {
-        document.cookie = `google_client_id=${encodeURIComponent(googleClientId.trim())}; path=/; max-age=31536000; SameSite=Lax; Secure`;
+        document.cookie = `google_client_id=${encodeURIComponent(googleClientId.trim())}; path=/; max-age=31536000; SameSite=Lax${secureFlag}`;
+      } else {
+        document.cookie = 'google_client_id=; path=/; max-age=0; SameSite=Lax';
       }
       if (googleClientSecret.trim()) {
-        document.cookie = `google_client_secret=${encodeURIComponent(googleClientSecret.trim())}; path=/; max-age=31536000; SameSite=Lax; Secure`;
+        document.cookie = `google_client_secret=${encodeURIComponent(googleClientSecret.trim())}; path=/; max-age=31536000; SameSite=Lax${secureFlag}`;
+      } else {
+        document.cookie = 'google_client_secret=; path=/; max-age=0; SameSite=Lax';
       }
     }
 
@@ -86,8 +110,8 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
       setGoogleAccessToken('');
       setProvider('antigravity');
       if (typeof document !== 'undefined') {
-        document.cookie = 'google_client_id=; path=/; max-age=0';
-        document.cookie = 'google_client_secret=; path=/; max-age=0';
+        document.cookie = 'google_client_id=; path=/; max-age=0; SameSite=Lax';
+        document.cookie = 'google_client_secret=; path=/; max-age=0; SameSite=Lax';
       }
       if (onClear) {
         onClear();
@@ -135,9 +159,49 @@ export function SettingsModal({ isOpen, onClose, settings, onSave, onClear }: Se
 
             {/* Configurazione In-App Client ID & Secret per chi non vuole usare Vercel Env */}
             {showAdvancedOAuth && (
-              <div className="p-3 bg-neutral-900/90 border border-neutral-800 rounded-xl space-y-2.5 animate-fade-in text-[11px] mt-2">
+              <div className="p-3 bg-neutral-900/90 border border-neutral-800 rounded-xl space-y-3 animate-fade-in text-[11px] mt-2">
                 <div className="text-neutral-400 leading-relaxed">
-                  Puoi inserire qui il tuo Client ID per far funzionare &ldquo;Accedi con Google&rdquo; senza dover toccare la dashboard di Vercel:
+                  Per far funzionare &ldquo;Accedi con Google&rdquo;, Google richiede un Client ID OAuth registrato su Google Cloud:
+                </div>
+
+                {/* URI di reindirizzamento da copiare */}
+                <div className="space-y-1 p-2.5 rounded-lg bg-neutral-950 border border-neutral-800/80">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-neutral-300 font-medium">URI Reindirizzamento autorizzato</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (callbackUrl) {
+                          navigator.clipboard.writeText(callbackUrl);
+                          setCopiedUri(true);
+                          setTimeout(() => setCopiedUri(false), 2000);
+                        }
+                      }}
+                      className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 text-[10px] font-medium"
+                    >
+                      {copiedUri ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                      <span>{copiedUri ? 'Copiato!' : 'Copia'}</span>
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    readOnly
+                    value={callbackUrl || ''}
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded px-2 py-1 text-neutral-300 font-mono text-[10px] select-all cursor-pointer"
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                  />
+                  <div className="flex items-center justify-between pt-0.5 text-[10px]">
+                    <span className="text-neutral-500">Incolla questo indirizzo nelle credenziali Google Cloud</span>
+                    <a
+                      href="https://console.cloud.google.com/apis/credentials"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-cyan-400 hover:underline flex items-center gap-0.5 font-medium"
+                    >
+                      <span>Apri Console</span>
+                      <ExternalLink size={9} />
+                    </a>
+                  </div>
                 </div>
 
                 <div className="space-y-1">

@@ -73,6 +73,14 @@ export default function Home() {
     }
   }, []);
 
+  useEffect(() => {
+    const handleOpenSettings = () => {
+      setIsSettingsOpen(true);
+    };
+    window.addEventListener('open-settings', handleOpenSettings);
+    return () => window.removeEventListener('open-settings', handleOpenSettings);
+  }, []);
+
   const handleSaveSettings = (newSettings: UserSettings) => {
     setSettings(newSettings);
     localStorage.setItem('giantigravity_settings', JSON.stringify(newSettings));
@@ -317,7 +325,10 @@ export default function Home() {
             </div>
 
             {/* Google Sign-in Card */}
-            <GoogleSignInButton variant={session?.user ? 'full' : 'card'} />
+            <GoogleSignInButton
+              variant={session?.user ? 'full' : 'card'}
+              onOpenSettings={() => setIsSettingsOpen(true)}
+            />
 
             {/* Step-by-Step Onboarding Cards */}
             {!hasConfig ? (

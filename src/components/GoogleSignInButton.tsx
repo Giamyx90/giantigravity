@@ -1,16 +1,64 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
-import { LogOut, CheckCircle2, Loader2 } from 'lucide-react';
+import { LogOut, CheckCircle2, Loader2, Settings2, ShieldAlert } from 'lucide-react';
+import { GoogleOAuthGuideModal } from '@/components/GoogleOAuthGuideModal';
 
 interface GoogleSignInButtonProps {
   variant?: 'full' | 'compact' | 'card';
   className?: string;
+  onOpenSettings?: (focus?: 'oauth' | 'gemini') => void;
 }
 
-export function GoogleSignInButton({ variant = 'full', className = '' }: GoogleSignInButtonProps) {
+export function GoogleSignInButton({ variant = 'full', className = '', onOpenSettings }: GoogleSignInButtonProps) {
   const { data: session, status } = useSession();
+  const [isConfigured, setIsConfigured] = useState<boolean | null>(null);
+  const [showGuideModal, setShowGuideModal] = useState(false);
+
+  // Verifica se un Client ID è configurato (nei cookie o nelle variabili d'ambiente)
+  const checkConfig = async () => {
+    // 1. Controllo sincrono nei cookie del browser
+    if (typeof document !== 'undefined') {
+      const match = document.cookie.match(/(?:^|;\s*)google_client_id=([^;]*)/);
+      if (match && match[1]) {
+        const val = decodeURIComponent(match[1]).trim();
+        if (val && val !== 'dummy-client-id') {
+          setIsConfigured(true);
+          return;
+        }
+      }
+    }
+
+    // 2. Controllo asincrono sul server (/api/auth/status)
+    try {
+      const res = await fetch('/api/auth/status');
+      if (res.ok) {
+        const data = await res.json();
+        setIsConfigured(Boolean(data.configured));
+      } else {
+        setIsConfigured(false);
+      }
+    } catch {
+      setIsConfigured(false);
+    }
+  };
+
+  useEffect(() => {
+    checkConfig();
+  }, []);
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+
+    // Se non è configurato un Google Client ID valido, apri la guida invece di mandare l'utente alla pagina di errore di Google
+    if (!isConfigured) {
+      setShowGuideModal(true);
+      return;
+    }
+
+    signIn('google');
+  };
 
   const GoogleLogo = () => (
     <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
@@ -109,40 +157,71 @@ export function GoogleSignInButton({ variant = 'full', className = '' }: GoogleS
   }
 
   // Se NON è autenticato
-  if (variant === 'card') {
-    return (
-      <div className="p-4 bg-gradient-to-r from-neutral-900 to-neutral-900/80 border border-neutral-800 rounded-2xl shadow-lg flex flex-col gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-white shadow-sm flex items-center justify-center">
+  return (
+    <>
+      {variant === 'card' ? (
+        <div className="p-4 bg-gradient-to-r from-neutral-900 to-neutral-900/80 border border-neutral-800 rounded-2xl shadow-lg flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-white shadow-sm flex items-center justify-center">
+                <GoogleLogo />
+              </div>
+              <div>
+                <span className="font-semibold text-neutral-100 block text-sm">Accedi con Google</span>
+                <span className="text-[11px] text-neutral-400">
+                  Usa il tuo account Google per autenticarti direttamente dalla WebApp
+                </span>
+              </div>
+            </div>
+            {!isConfigured && isConfigured !== null && (
+              <span className="text-[10px] text-amber-400 bg-amber-950/60 border border-amber-800/60 px-2 py-0.5 rounded-full font-medium shrink-0">
+                Setup richiesto
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={handleClick}
+            className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-neutral-100 text-neutral-900 font-semibold text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.99]"
+          >
             <GoogleLogo />
-          </div>
-          <div>
-            <span className="font-semibold text-neutral-100 block text-sm">Accedi con Google</span>
-            <span className="text-[11px] text-neutral-400">
-              Sblocca quote elevate e modelli avanzati senza dover inserire API key manuali
-            </span>
-          </div>
+            <span>Accedi con Google</span>
+          </button>
         </div>
+      ) : variant === 'compact' ? (
         <button
           type="button"
-          onClick={() => signIn('google')}
-          className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-neutral-100 text-neutral-900 font-semibold text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.99]"
+          onClick={handleClick}
+          className={`p-1.5 rounded-xl border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 text-xs flex items-center gap-1.5 transition-colors ${className}`}
+          title={isConfigured ? 'Accedi con Google' : 'Configura Accesso Google'}
         >
           <GoogleLogo />
-          <span>Accedi con il tuo Account Google</span>
+          {!isConfigured && isConfigured !== null && (
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+          )}
         </button>
-      </div>
-    );
-  }
+      ) : (
+        <button
+          type="button"
+          onClick={handleClick}
+          className={`py-2 px-3.5 rounded-xl border border-neutral-700/70 bg-neutral-900 hover:bg-neutral-800 text-neutral-100 font-medium text-xs flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.98] ${className}`}
+        >
+          <GoogleLogo />
+          <span>Accedi con Google</span>
+          {!isConfigured && isConfigured !== null && (
+            <span className="text-[10px] text-amber-400 bg-amber-950 border border-amber-800/60 px-1.5 py-0.2 rounded font-normal">
+              Setup
+            </span>
+          )}
+        </button>
+      )}
 
-  return (
-    <button
-      type="button"
-      onClick={() => signIn('google')}
-      className={`py-2 px-3.5 rounded-xl border border-neutral-700/70 bg-neutral-900 hover:bg-neutral-800 text-neutral-100 font-medium text-xs flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.98] ${className}`}
-    >
-      <GoogleLogo />
-      <span>Accedi con Google</span>
-    </button>
+      {/* Modale guida se Google OAuth non è ancora configurato */}
+      <GoogleOAuthGuideModal
+        isOpen={showGuideModal}
+        onClose={() => setShowGuideModal(false)}
+        onOpenSettings={onOpenSettings}
+      />
+    </>
   );
 }
