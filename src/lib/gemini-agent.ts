@@ -133,23 +133,6 @@ export interface AgentRunParams {
   onChunk: (chunk: string) => void;
 }
 
-function resolveModelForPublicApi(model: string): string {
-  // I nomi modello "gemini-3.8-flash", "gemini-3.7-flash" e "gemini-3.6-flash" sono identificatori
-  // nativi di Google Antigravity / Cloud Code (daily-cloudcode-pa).
-  // Sull'endpoint pubblico Google AI Studio (generativelanguage.googleapis.com), Google restituisce
-  // "503 This model is currently experiencing high demand" perché i nomi 3.8/3.7/3.6 sono serviti sui cluster interni.
-  // Mappiamo sui corrispondenti modelli Flash di produzione per le chiamate dirette all'API cloud.
-  const map: Record<string, string> = {
-    'gemini-3.8-flash': 'gemini-2.5-flash',
-    'gemini-3.8-flash-high': 'gemini-2.5-flash',
-    'gemini-3.7-flash': 'gemini-2.5-flash',
-    'gemini-3.7-flash-high': 'gemini-2.5-flash',
-    'gemini-3.6-flash': 'gemini-2.0-flash',
-    'gemini-3.6-flash-high': 'gemini-2.0-flash',
-  };
-  return map[model] || model;
-}
-
 export async function runAgent({
   apiKey,
   googleAccessToken,
@@ -216,9 +199,8 @@ Rispondi in lingua italiana.`;
     while (attempts < maxAttempts) {
       attempts++;
       try {
-        const targetModel = resolveModelForPublicApi(activeModel);
         response = await ai.models.generateContent({
-          model: targetModel,
+          model: activeModel,
           contents,
           config: {
             systemInstruction,
