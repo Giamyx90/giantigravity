@@ -37,10 +37,14 @@ export async function POST(req: NextRequest) {
 
       if (!geminiTestRes.ok) {
         const geminiErr = await geminiTestRes.json().catch(() => ({}));
+        let userFriendlyError = geminiErr.error?.message;
+        if (userFriendlyError?.includes('invalid authentication credentials')) {
+          userFriendlyError = `Il token è valido per l'account (${tokenInfo.email || 'Google'}), ma NON ha i permessi per Gemini. Scope del tuo token: "${tokenInfo.scope || 'nessuno'}". Per funzionare deve includere: https://www.googleapis.com/auth/generative-language`;
+        }
         return NextResponse.json({
           valid: false,
           error:
-            geminiErr.error?.message ||
+            userFriendlyError ||
             'Il token è valido ma non ha lo scope per Gemini (https://www.googleapis.com/auth/generative-language).',
           tokenInfo,
         });

@@ -132,9 +132,13 @@ export async function POST(req: NextRequest) {
           sendEvent({ type: 'done', reply: result.reply, steps: result.steps });
         } catch (err: any) {
           console.error('Agent error:', err);
+          let errorMsg = err.message || 'Errore durante l\'esecuzione dell\'agente.';
+          if (errorMsg.includes('invalid authentication credentials')) {
+            errorMsg = 'Credenziali non valide o scadute (HTTP 401). Se usi un Access Token (ya29...), ricorda che dura 60 minuti e deve avere lo scope "generative-language". Per evitare scadenze continue, puoi usare la tua API Key di Google AI Studio nelle impostazioni.';
+          }
           sendEvent({
             type: 'error',
-            error: err.message || 'Errore durante l\'esecuzione dell\'agente.',
+            error: errorMsg,
           });
         } finally {
           controller.close();

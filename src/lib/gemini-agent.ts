@@ -143,16 +143,19 @@ export async function runAgent({
   onStepUpdate,
   onChunk,
 }: AgentRunParams): Promise<{ reply: string; steps: AgentStep[] }> {
+  const cleanAccessToken = googleAccessToken?.trim();
+  const cleanApiKey = apiKey?.trim();
+
   const ai = new GoogleGenAI({
-    apiKey: apiKey || 'oauth-token',
-    httpOptions: googleAccessToken
-      ? {
-          headers: {
-            Authorization: `Bearer ${googleAccessToken}`,
-          },
-        }
-      : undefined,
+    apiKey: cleanApiKey || 'placeholder-key',
   });
+
+  if (cleanAccessToken) {
+    // Rimuove l'header x-goog-api-key e invia esclusivamente Authorization: Bearer <token>
+    (ai as any).apiClient.clientOptions.auth.addAuthHeaders = async (headers: Headers) => {
+      headers.set('Authorization', `Bearer ${cleanAccessToken}`);
+    };
+  }
 
   const systemInstruction = `Sei Giantigravity, un assistente di programmazione agentico avanzato alimentato da Google Gemini.
 Lavori direttamente sul repository GitHub: "${repoContext.owner}/${repoContext.repo}" (branch attivo: "${repoContext.branch}").
