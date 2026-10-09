@@ -14,20 +14,7 @@ export function getAgyExecutable(): AgyExecutableInfo | null {
   const home = os.homedir();
   const localAppData = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local');
 
-  // 1. Eseguibile diretto Antigravity Language Server
-  const directLsExe = path.join(
-    localAppData,
-    'Programs',
-    'Antigravity',
-    'resources',
-    'bin',
-    'language_server.exe'
-  );
-  if (fs.existsSync(directLsExe)) {
-    return { exe: directLsExe, baseArgs: ['agentapi'] };
-  }
-
-  // 2. Batch script agentapi.bat in .gemini/antigravity/bin
+  // 1. Batch script agentapi.bat in .gemini/antigravity/bin
   const agentApiBat = path.join(home, '.gemini', 'antigravity', 'bin', 'agentapi.bat');
   if (fs.existsSync(agentApiBat)) {
     return { exe: agentApiBat, baseArgs: [] };

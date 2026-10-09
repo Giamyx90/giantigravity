@@ -145,15 +145,18 @@ export function Header({
 
   return (
     <>
-      <header className="sticky top-0 z-40 w-full bg-neutral-900/90 backdrop-blur-md border-b border-neutral-800 px-3 py-2.5 sm:px-4 flex items-center justify-between safe-area-top">
-        {/* App Title & Logo */}
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-cyan-500 via-blue-500 to-indigo-500 flex items-center justify-center shadow-md">
-            <Sparkles size={15} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
-              <span>Giantigravity</span>
+      <header className="sticky top-0 z-40 w-full bg-neutral-900/95 backdrop-blur-md border-b border-neutral-800 safe-area-top">
+        {/* Main Bar (Row 1) */}
+        <div className="px-3 py-2 sm:px-4 flex items-center justify-between gap-2">
+          {/* App Title, Logo & Provider Badge */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-cyan-500 via-blue-500 to-indigo-500 flex items-center justify-center shadow-md shrink-0">
+              <Sparkles size={15} className="text-white" />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-sm font-bold tracking-tight text-white">
+                Giantigravity
+              </h1>
               {provider === 'antigravity' ? (
                 <button
                   type="button"
@@ -189,104 +192,176 @@ export function Header({
                   <span>Google Cloud</span>
                 </button>
               )}
-            </h1>
+            </div>
+          </div>
+
+          {/* Desktop Only Center: Active Repo & Branch Chip */}
+          <div className="hidden sm:flex items-center justify-center flex-1 min-w-0 max-w-xs mx-2">
+            <button
+              onClick={openRepoSelector}
+              className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs transition-all truncate bg-neutral-800/90 hover:bg-neutral-800 border-neutral-700/60 text-neutral-200 cursor-pointer shadow-sm"
+              title="Seleziona o cambia repository"
+            >
+              {repoContext.owner === 'local' ? (
+                <>
+                  <FolderGit2 size={13} className="text-cyan-400 shrink-0" />
+                  <span className="truncate font-mono font-medium text-[11px]">
+                    {repoContext.repo || 'workspace'} (Locale)
+                  </span>
+                  <ChevronDown size={12} className="text-neutral-500 shrink-0" />
+                </>
+              ) : repoContext.owner ? (
+                <>
+                  <GithubIcon size={13} className="text-neutral-400 shrink-0" />
+                  <span className="truncate font-mono font-medium text-[11px]">
+                    {repoContext.owner}/{repoContext.repo}
+                  </span>
+                  <span className="text-neutral-600">/</span>
+                  <span className="text-cyan-400 font-mono text-[10px] truncate">{repoContext.branch}</span>
+                  <ChevronDown size={12} className="text-neutral-500 shrink-0" />
+                </>
+              ) : (
+                <>
+                  <FolderGit2 size={13} className="text-cyan-400 shrink-0" />
+                  <span className="truncate font-mono font-medium text-[11px]">Seleziona Repository</span>
+                  <ChevronDown size={12} className="text-neutral-500 shrink-0" />
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Actions: Model Switcher & Tokens on Desktop, Core Action Icons on both */}
+          <div className="flex items-center gap-1 shrink-0">
+            {/* Desktop Only Model & Token chips */}
+            {onOpenModelSelector && (
+              <button
+                onClick={onOpenModelSelector}
+                className="hidden sm:flex p-1.5 px-2 rounded-xl bg-neutral-800/80 hover:bg-neutral-800 text-cyan-300 border border-neutral-700/60 text-[11px] font-mono items-center gap-1 transition-colors"
+                title="Cambia modello"
+              >
+                <Zap size={12} className="text-amber-400" />
+                <span>{selectedModel.replace('gemini-', '')}</span>
+                <ChevronDown size={11} className="text-neutral-400" />
+              </button>
+            )}
+
+            {onOpenTokenModal && (
+              <button
+                onClick={onOpenTokenModal}
+                className={`hidden sm:flex p-1.5 px-2 rounded-xl text-[11px] font-mono items-center gap-1 transition-all ${
+                  isOverBudget
+                    ? 'bg-red-950/80 text-red-300 border border-red-700/80 animate-pulse'
+                    : isNearBudget
+                    ? 'bg-amber-950/80 text-amber-300 border border-amber-700/80'
+                    : 'bg-neutral-800/80 hover:bg-neutral-800 text-amber-300 border border-neutral-700/60'
+                }`}
+                title="Controllo e consumo Token"
+              >
+                <Zap size={12} className={isOverBudget ? 'text-red-400' : isNearBudget ? 'text-amber-400' : 'text-amber-400'} />
+                <span>{formatTokenCount(sessionTokens)}</span>
+              </button>
+            )}
+
+            {onOpenHistory && (
+              <button
+                onClick={onOpenHistory}
+                className="relative p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors shrink-0"
+                title="Storico conversazioni"
+              >
+                <History size={16} />
+                {historyCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                )}
+              </button>
+            )}
+
+            <button
+              onClick={onNewChat}
+              className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors shrink-0"
+              title="Nuova conversazione"
+            >
+              <PlusCircle size={16} />
+            </button>
+
+            <button
+              onClick={onOpenSettings}
+              className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors shrink-0"
+              title="Impostazioni"
+            >
+              <Settings size={16} />
+            </button>
+
+            <div className="shrink-0">
+              <GoogleSignInButton variant="compact" />
+            </div>
           </div>
         </div>
 
-        {/* Center: Active Repo & Branch Chip */}
-        <button
-          onClick={openRepoSelector}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs transition-all max-w-[180px] sm:max-w-xs truncate bg-neutral-800/90 hover:bg-neutral-800 border-neutral-700/60 text-neutral-200 cursor-pointer shadow-sm"
-          title="Seleziona o cambia repository"
-        >
-          {repoContext.owner === 'local' ? (
-            <>
-              <FolderGit2 size={13} className="text-cyan-400 shrink-0" />
-              <span className="truncate font-mono font-medium text-[11px]">
-                {repoContext.repo || 'workspace'} (Locale)
-              </span>
-              <ChevronDown size={12} className="text-neutral-500 shrink-0" />
-            </>
-          ) : repoContext.owner ? (
-            <>
-              <GithubIcon size={13} className="text-neutral-400 shrink-0" />
-              <span className="truncate font-mono font-medium text-[11px]">
-                {repoContext.owner}/{repoContext.repo}
-              </span>
-              <span className="text-neutral-600">/</span>
-              <span className="text-cyan-400 font-mono text-[10px] truncate">{repoContext.branch}</span>
-              <ChevronDown size={12} className="text-neutral-500 shrink-0" />
-            </>
-          ) : (
-            <>
-              <FolderGit2 size={13} className="text-cyan-400 shrink-0" />
-              <span className="truncate font-mono font-medium text-[11px]">Seleziona Repository</span>
-              <ChevronDown size={12} className="text-neutral-500 shrink-0" />
-            </>
-          )}
-        </button>
+        {/* Mobile Toolbar (Row 2 - only on screens < sm) */}
+        <div className="sm:hidden px-3 pb-2 pt-0.5 flex items-center gap-1.5 border-t border-neutral-800/50">
+          {/* Mobile Repo Selector Button */}
+          <button
+            onClick={openRepoSelector}
+            className="flex-1 min-w-0 flex items-center justify-between gap-1.5 px-2.5 py-1 rounded-lg border text-xs transition-all bg-neutral-800/90 hover:bg-neutral-800 border-neutral-700/60 text-neutral-200 cursor-pointer shadow-sm"
+            title="Seleziona o cambia repository"
+          >
+            <div className="flex items-center gap-1.5 min-w-0 truncate">
+              {repoContext.owner === 'local' ? (
+                <>
+                  <FolderGit2 size={12} className="text-cyan-400 shrink-0" />
+                  <span className="truncate font-mono font-medium text-[11px]">
+                    {repoContext.repo || 'workspace'} (Locale)
+                  </span>
+                </>
+              ) : repoContext.owner ? (
+                <>
+                  <GithubIcon size={12} className="text-neutral-400 shrink-0" />
+                  <span className="truncate font-mono font-medium text-[11px]">
+                    {repoContext.owner}/{repoContext.repo}
+                  </span>
+                  <span className="text-neutral-600">/</span>
+                  <span className="text-cyan-400 font-mono text-[10px] truncate">{repoContext.branch}</span>
+                </>
+              ) : (
+                <>
+                  <FolderGit2 size={12} className="text-cyan-400 shrink-0" />
+                  <span className="truncate font-mono font-medium text-[11px]">Seleziona Repo</span>
+                </>
+              )}
+            </div>
+            <ChevronDown size={11} className="text-neutral-500 shrink-0" />
+          </button>
 
-        {/* Actions: Model Switcher, New Chat & Settings */}
-        <div className="flex items-center gap-1">
+          {/* Mobile Model Button */}
           {onOpenModelSelector && (
             <button
               onClick={onOpenModelSelector}
-              className="p-1.5 px-2 rounded-xl bg-neutral-800/80 hover:bg-neutral-800 text-cyan-300 border border-neutral-700/60 text-[11px] font-mono flex items-center gap-1 transition-colors"
+              className="shrink-0 p-1 px-2 rounded-lg bg-neutral-800/90 hover:bg-neutral-800 text-cyan-300 border border-neutral-700/60 text-[10px] font-mono flex items-center gap-1 transition-colors"
               title="Cambia modello"
             >
-              <Zap size={12} className="text-amber-400" />
-              <span className="hidden sm:inline">{selectedModel.replace('gemini-', '')}</span>
-              <ChevronDown size={11} className="text-neutral-400" />
+              <Zap size={11} className="text-amber-400 shrink-0" />
+              <span>{selectedModel.replace('gemini-', '')}</span>
+              <ChevronDown size={10} className="text-neutral-400 shrink-0" />
             </button>
           )}
 
+          {/* Mobile Token Button */}
           {onOpenTokenModal && (
             <button
               onClick={onOpenTokenModal}
-              className={`p-1.5 px-2 rounded-xl text-[11px] font-mono flex items-center gap-1 transition-all ${
+              className={`shrink-0 p-1 px-2 rounded-lg text-[10px] font-mono flex items-center gap-1 transition-all ${
                 isOverBudget
                   ? 'bg-red-950/80 text-red-300 border border-red-700/80 animate-pulse'
                   : isNearBudget
                   ? 'bg-amber-950/80 text-amber-300 border border-amber-700/80'
-                  : 'bg-neutral-800/80 hover:bg-neutral-800 text-amber-300 border border-neutral-700/60'
+                  : 'bg-neutral-800/90 hover:bg-neutral-800 text-amber-300 border border-neutral-700/60'
               }`}
               title="Controllo e consumo Token"
             >
-              <Zap size={12} className={isOverBudget ? 'text-red-400' : isNearBudget ? 'text-amber-400' : 'text-amber-400'} />
+              <Zap size={11} className={isOverBudget ? 'text-red-400' : 'text-amber-400'} />
               <span>{formatTokenCount(sessionTokens)}</span>
             </button>
           )}
-
-          {onOpenHistory && (
-            <button
-              onClick={onOpenHistory}
-              className="relative p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
-              title="Storico conversazioni"
-            >
-              <History size={17} />
-              {historyCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-cyan-400" />
-              )}
-            </button>
-          )}
-
-          <button
-            onClick={onNewChat}
-            className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
-            title="Nuova conversazione"
-          >
-            <PlusCircle size={17} />
-          </button>
-
-          <button
-            onClick={onOpenSettings}
-            className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
-            title="Impostazioni"
-          >
-            <Settings size={17} />
-          </button>
-
-          <GoogleSignInButton variant="compact" />
         </div>
       </header>
 
