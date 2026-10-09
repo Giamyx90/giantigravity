@@ -14,7 +14,20 @@ export function getAgyExecutable(): AgyExecutableInfo | null {
   const home = os.homedir();
   const localAppData = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local');
 
-  // 1. Batch script agentapi.bat in .gemini/antigravity/bin
+  // 1. Eseguibile diretto Antigravity Language Server (con comando agentapi nativo)
+  const directLsExe = path.join(
+    localAppData,
+    'Programs',
+    'Antigravity',
+    'resources',
+    'bin',
+    'language_server.exe'
+  );
+  if (fs.existsSync(directLsExe)) {
+    return { exe: directLsExe, baseArgs: ['agentapi'] };
+  }
+
+  // 2. Batch script agentapi.bat in .gemini/antigravity/bin
   const agentApiBat = path.join(home, '.gemini', 'antigravity', 'bin', 'agentapi.bat');
   if (fs.existsSync(agentApiBat)) {
     return { exe: agentApiBat, baseArgs: [] };
@@ -224,7 +237,12 @@ export async function runAgyAgent({
       encoding: 'utf8',
       windowsHide: true,
       maxBuffer: 10 * 1024 * 1024,
+      shell: agy.exe.endsWith('.bat') || agy.exe.endsWith('.cmd'),
     });
+
+    if (proc.error) {
+      throw new Error(`Errore esecuzione Antigravity: ${proc.error.message}`);
+    }
 
     if (proc.status !== 0 && proc.status !== null) {
       throw new Error(`Errore nell'invio del messaggio ad Antigravity: ${proc.stderr || proc.stdout}`);
@@ -244,7 +262,12 @@ export async function runAgyAgent({
       encoding: 'utf8',
       windowsHide: true,
       maxBuffer: 10 * 1024 * 1024,
+      shell: agy.exe.endsWith('.bat') || agy.exe.endsWith('.cmd'),
     });
+
+    if (proc.error) {
+      throw new Error(`Errore avvio Antigravity: ${proc.error.message}`);
+    }
 
     if (proc.status !== 0 && proc.status !== null) {
       throw new Error(`Impossibile avviare la conversazione Antigravity: ${proc.stderr || proc.stdout}`);
