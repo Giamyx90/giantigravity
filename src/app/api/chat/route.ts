@@ -41,7 +41,28 @@ export async function POST(req: NextRequest) {
     const githubToken = settings.githubToken || process.env.GITHUB_TOKEN || '';
     const activeGoogleAccessToken = googleAccessToken || serverAccessToken || settings.googleAccessToken;
     const modelName = settings.selectedModel || process.env.GEMINI_MODEL || 'gemini-3.8-flash';
-    const provider = isAgyInstalled() ? 'antigravity' : (settings.provider || (activeGoogleAccessToken ? 'google_oauth' : 'gemini_api'));
+    // Risoluzione flessibile del provider:
+    // 1. Se l'utente ha impostato esplicitamente un provider nelle impostazioni, lo rispettiamo!
+    // 2. Se l'utente è autenticato con Google (OAuth), usa google_oauth
+    // 3. Se l'utente ha inserito una Gemini API Key, usa gemini_api
+    // 4. Se Antigravity è installato in locale e non vi sono altre credenziali, usa antigravity
+    let provider: 'antigravity' | 'google_oauth' | 'gemini_api';
+
+    if (settings.provider === 'google_oauth') {
+      provider = 'google_oauth';
+    } else if (settings.provider === 'gemini_api') {
+      provider = 'gemini_api';
+    } else if (settings.provider === 'antigravity') {
+      provider = isAgyInstalled() ? 'antigravity' : (activeGoogleAccessToken ? 'google_oauth' : 'gemini_api');
+    } else if (activeGoogleAccessToken) {
+      provider = 'google_oauth';
+    } else if (apiKey) {
+      provider = 'gemini_api';
+    } else if (isAgyInstalled()) {
+      provider = 'antigravity';
+    } else {
+      provider = 'google_oauth';
+    }
 
     const encoder = new TextEncoder();
 

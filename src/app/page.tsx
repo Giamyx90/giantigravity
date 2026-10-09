@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChatMessage, RepoContext, UserSettings, AgentStep, ChatSession } from '@/types';
+import { ChatMessage, RepoContext, UserSettings, AgentStep, ChatSession, AIProvider } from '@/types';
 import { Header } from '@/components/Header';
 import { MessageBubble } from '@/components/MessageBubble';
 import { ChatInput } from '@/components/ChatInput';
@@ -25,7 +25,7 @@ import {
   setActiveSessionId,
   generateSessionTitle,
 } from '@/lib/history';
-import { Sparkles, GitBranch, Code2, Cpu, Smartphone, Lock, CheckCircle2, History, Zap } from 'lucide-react';
+import { Sparkles, GitBranch, Code2, Cpu, Smartphone, Lock, CheckCircle2, History, Zap, Globe, Laptop, Key } from 'lucide-react';
 import { GithubIcon } from '@/components/GithubIcon';
 import { useSession, signIn } from 'next-auth/react';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
@@ -213,9 +213,19 @@ export default function Home() {
     scrollToBottom();
   }, [messages, isLoading]);
 
-  const isGoogleLoggedIn = Boolean(session?.user);
+  const isGoogleLoggedIn = Boolean(session?.user) || Boolean(settings.googleAccessToken);
   const hasOAuthClientKeys = Boolean(settings.googleClientId && settings.googleClientSecret);
-  const hasConfig = isGoogleLoggedIn || Boolean(isAgyAvailable) || Boolean(settings.geminiApiKey);
+  const hasGeminiKey = Boolean(settings.geminiApiKey);
+
+  const activeProvider: AIProvider =
+    settings.provider || (isAgyAvailable ? 'antigravity' : isGoogleLoggedIn ? 'google_oauth' : 'gemini_api');
+
+  const hasConfig =
+    activeProvider === 'antigravity'
+      ? Boolean(isAgyAvailable)
+      : activeProvider === 'gemini_api'
+      ? hasGeminiKey
+      : isGoogleLoggedIn || Boolean(isAgyAvailable) || hasGeminiKey;
 
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
@@ -444,7 +454,7 @@ export default function Home() {
         isRepoModalOpen={isRepoModalOpen}
         setIsRepoModalOpen={setIsRepoModalOpen}
         selectedModel={settings.selectedModel}
-        provider={settings.provider || 'antigravity'}
+        provider={activeProvider}
         onOpenModelSelector={() => setIsModelModalOpen(true)}
         isAgyAvailable={Boolean(isAgyAvailable)}
         onOpenTokenModal={() => setIsTokenModalOpen(true)}
@@ -552,22 +562,92 @@ export default function Home() {
             )}
 
             {/* Step-by-Step Onboarding Cards */}
-            {isAgyAvailable ? (
-              <div className="p-4 bg-gradient-to-r from-emerald-950/40 via-teal-950/20 to-neutral-900 border border-emerald-600/60 rounded-2xl text-left shadow-lg">
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-2 text-emerald-300 font-semibold text-xs">
-                    <Sparkles size={15} className="text-emerald-400" />
-                    <span>Antigravity Locale Attivo</span>
+            {activeProvider === 'antigravity' ? (
+              isAgyAvailable ? (
+                <div className="p-4 bg-gradient-to-r from-emerald-950/40 via-teal-950/20 to-neutral-900 border border-emerald-600/60 rounded-2xl text-left shadow-lg">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2 text-emerald-300 font-semibold text-xs">
+                      <Laptop size={15} className="text-emerald-400" />
+                      <span>Antigravity Locale Attivo</span>
+                    </div>
+                    <span className="text-[10px] text-emerald-300 font-bold px-2.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-600">
+                      Nativo PC ● Connesso
+                    </span>
                   </div>
-                  <span className="text-[10px] text-emerald-300 font-bold px-2.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-600">
-                    Nativo PC ● Connesso
+                  <p className="text-[11px] text-neutral-300 leading-relaxed">
+                    Giantigravity è connesso al motore Google Antigravity sul tuo PC. Nessuna API key o login richiesto: scrivi direttamente qui sotto per programmare!
+                  </p>
+                </div>
+              ) : (
+                <div
+                  onClick={() => setIsSettingsOpen(true)}
+                  className="cursor-pointer p-4 bg-gradient-to-r from-amber-950/40 via-yellow-950/20 to-neutral-900 border border-amber-600/60 rounded-2xl text-left shadow-lg hover:border-amber-400 transition-all group"
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2 text-amber-300 font-semibold text-xs">
+                      <Laptop size={15} className="text-amber-400" />
+                      <span>PC Antigravity Non Raggiungibile</span>
+                    </div>
+                    <span className="text-[10px] text-amber-300 font-bold px-2.5 py-0.5 rounded-full bg-amber-950 border border-amber-600">
+                      Fuori casa? Tocca qui ➔
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-neutral-300 leading-relaxed">
+                    Sei fuori casa su rete mobile? Il motore locale del PC non è raggiungibile su IP privato. Tocca qui per passare all&apos;<strong>Account Google</strong> o a una <strong>Gemini API Key</strong>, oppure avvia un tunnel sul PC.
+                  </p>
+                </div>
+              )
+            ) : activeProvider === 'gemini_api' ? (
+              hasGeminiKey ? (
+                <div className="p-4 bg-gradient-to-r from-amber-950/40 via-yellow-950/20 to-neutral-900 border border-amber-600/60 rounded-2xl text-left shadow-lg">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2 text-amber-300 font-semibold text-xs">
+                      <Key size={15} className="text-amber-400" />
+                      <span>Gemini API Key Attiva</span>
+                    </div>
+                    <span className="text-[10px] text-amber-300 font-bold px-2.5 py-0.5 rounded-full bg-amber-950 border border-amber-600">
+                      AI Studio ● Operativo ovunque
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-neutral-300 leading-relaxed">
+                    Connesso direttamente alle API di Google Gemini Cloud. Pronto a eseguire richieste dallo smartphone ovunque ti trovi!
+                  </p>
+                </div>
+              ) : (
+                <div
+                  onClick={() => setIsSettingsOpen(true)}
+                  className="cursor-pointer p-4 bg-gradient-to-r from-amber-950/40 to-yellow-950/30 border border-amber-700/60 rounded-2xl text-left hover:border-amber-400 transition-all shadow-lg group"
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2 text-amber-300 font-semibold text-xs">
+                      <Key size={15} className="text-amber-400" />
+                      <span>Gemini API Key Mancante</span>
+                    </div>
+                    <span className="text-[10px] text-amber-300 font-bold px-2.5 py-0.5 rounded-full bg-amber-950 border border-amber-700 animate-pulse">
+                      Inserisci Key ➔
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-neutral-200 leading-relaxed">
+                    Tocca qui per inserire la tua chiave gratuita da Google AI Studio per iniziare a programmare da qualsiasi connessione.
+                  </p>
+                </div>
+              )
+            ) : isGoogleLoggedIn ? (
+              <div className="p-4 bg-gradient-to-r from-blue-950/40 via-cyan-950/20 to-neutral-900 border border-blue-600/60 rounded-2xl text-left shadow-lg">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2 text-cyan-300 font-semibold text-xs">
+                    <Globe size={15} className="text-cyan-400" />
+                    <span>Account Google Connesso</span>
+                  </div>
+                  <span className="text-[10px] text-cyan-300 font-bold px-2.5 py-0.5 rounded-full bg-cyan-950 border border-cyan-600">
+                    Cloud ● Operativo ovunque
                   </span>
                 </div>
                 <p className="text-[11px] text-neutral-300 leading-relaxed">
-                  Giantigravity è connesso al motore Google Antigravity sul tuo PC. Nessuna API key o login richiesto: scrivi direttamente qui sotto per programmare!
+                  Connesso tramite Google Cloud. L&apos;IDE risponde sia in Wi-Fi che da fuori casa con connessione cellulare 4G/5G!
                 </p>
               </div>
-            ) : !isGoogleLoggedIn ? (
+            ) : (
               <div
                 onClick={() => {
                   if (hasOAuthClientKeys) {
@@ -580,8 +660,8 @@ export default function Home() {
               >
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-2 text-cyan-300 font-semibold text-xs">
-                    <Sparkles size={15} className="text-cyan-400" />
-                    <span>Accesso Richiesto</span>
+                    <Globe size={15} className="text-cyan-400" />
+                    <span>Accesso con Google Richiesto</span>
                   </div>
                   <span className="text-[10px] text-cyan-300 font-bold px-2.5 py-0.5 rounded-full bg-cyan-950 border border-cyan-700 animate-pulse">
                     {hasOAuthClientKeys ? 'Accedi ora ➔' : 'Configura Client ID ➔'}
@@ -593,7 +673,10 @@ export default function Home() {
                     : "Tocca qui per inserire il tuo Google Client ID nelle impostazioni ed effettuare l'accesso con Google."}
                 </p>
               </div>
-            ) : !repoContext.owner ? (
+            )}
+
+            {/* Step 2: Select Repository */}
+            {!repoContext.owner ? (
               <div
                 onClick={() => setIsRepoModalOpen(true)}
                 className="cursor-pointer p-4 bg-cyan-950/30 border border-cyan-800/60 rounded-2xl text-left hover:border-cyan-500 transition-all shadow-md animate-pulse"

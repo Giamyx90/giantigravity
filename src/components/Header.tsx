@@ -50,6 +50,7 @@ export function Header({
   isRepoModalOpen,
   setIsRepoModalOpen,
   selectedModel = 'gemini-3.8-flash',
+  provider = 'google_oauth',
   onOpenModelSelector,
   isAgyAvailable,
   onOpenHistory,
@@ -153,14 +154,40 @@ export function Header({
           <div>
             <h1 className="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
               <span>Giantigravity</span>
-              {isAgyAvailable && (
-                <span
-                  title="Connesso a Google Antigravity Locale"
-                  className="hidden md:inline-flex items-center gap-1 text-[9px] font-semibold text-emerald-400 bg-emerald-950/80 border border-emerald-700/60 px-1.5 py-0.5 rounded-full"
+              {provider === 'antigravity' ? (
+                <button
+                  type="button"
+                  onClick={onOpenSettings}
+                  title={isAgyAvailable ? 'Connesso ad Antigravity Locale PC' : 'Antigravity Locale non raggiungibile'}
+                  className={`inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full transition-all cursor-pointer ${
+                    isAgyAvailable
+                      ? 'text-emerald-400 bg-emerald-950/80 border border-emerald-700/60 hover:bg-emerald-900/60'
+                      : 'text-amber-400 bg-amber-950/80 border border-amber-700/60 hover:bg-amber-900/60'
+                  }`}
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  PC Nativo
-                </span>
+                  <span className={`w-1.5 h-1.5 rounded-full ${isAgyAvailable ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
+                  <span>{isAgyAvailable ? 'PC Nativo' : 'PC Offline'}</span>
+                </button>
+              ) : provider === 'gemini_api' ? (
+                <button
+                  type="button"
+                  onClick={onOpenSettings}
+                  title="Connesso tramite Gemini API Key"
+                  className="inline-flex items-center gap-1 text-[9px] font-semibold text-amber-300 bg-amber-950/80 border border-amber-700/60 hover:bg-amber-900/60 px-1.5 py-0.5 rounded-full transition-all cursor-pointer"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                  <span>Gemini API</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onOpenSettings}
+                  title="Connesso tramite Account Google Cloud"
+                  className="inline-flex items-center gap-1 text-[9px] font-semibold text-blue-300 bg-blue-950/80 border border-blue-700/60 hover:bg-blue-900/60 px-1.5 py-0.5 rounded-full transition-all cursor-pointer"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
+                  <span>Google Cloud</span>
+                </button>
               )}
             </h1>
           </div>
